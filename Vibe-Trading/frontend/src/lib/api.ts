@@ -23,7 +23,7 @@ import type {
   UploadResult,
 } from "@/types/api";
 
-const BASE = "";
+const BASE: string = (import.meta as any).env?.VITE_API_BASE ?? "";
 
 export class ApiError extends Error {
   status: number;
@@ -297,7 +297,7 @@ export const api = {
   importDeliveryCsv: (file: File) => {
     const form = new FormData();
     form.append("file", file);
-    return fetch("/aquant/delivery/import", {
+    return fetch(`${BASE}/aquant/delivery/import`, {
       method: "POST",
       headers: authHeaders(),
       body: form,
