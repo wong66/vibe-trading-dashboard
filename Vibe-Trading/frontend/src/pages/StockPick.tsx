@@ -19,6 +19,8 @@ import { PickLogicConfig } from "@/components/stockPick/PickLogicConfig";
 import { PickResultList } from "@/components/stockPick/PickResultList";
 import { StrategyFloatPanel } from "@/components/stockPick/StrategyFloatPanel";
 
+const API_BASE: string = (import.meta as any).env?.VITE_API_BASE ?? "";
+
 export function StockPick() {
   const [sector, setSector] = useState("半导体");
   const [loading, setLoading] = useState(false);
@@ -50,7 +52,7 @@ export function StockPick() {
 
     try {
       // Fetch real sector data from backend (cache-buster to avoid stale API responses)
-      const res = await fetch(`/sector-data?q=${encodeURIComponent(s)}&t=${Date.now()}`);
+      const res = await fetch(`${API_BASE}/sector-data?q=${encodeURIComponent(s)}&t=${Date.now()}`);
       const data = await res.json();
 
       if (data.error) {
