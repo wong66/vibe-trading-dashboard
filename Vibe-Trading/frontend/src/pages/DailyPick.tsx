@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Loader2 } from "lucide-react";
 
-const DAILY_PICK_SERVER = "http://localhost:5173";
+const DAILY_PICK_SERVER: string =
+  (import.meta as any).env?.VITE_DSA_BASE ?? "http://localhost:5173";
 
 export function DailyPick() {
   const [connected, setConnected] = useState(false);
