@@ -35,6 +35,11 @@ jobs:
       - name: Build frontend
         working-directory: Vibe-Trading/frontend
         run: npm run build
+        env:
+          # 生产环境前端直连 Cloudflare Tunnel（Mac 后端 127.0.0.1:8898 的暴露地址）。
+          # 隧道为 Named Tunnel，地址固定不变；凭据在用户 Mac 的 ~/.cloudflared/，不会进仓库。
+          # 前端据此把 /aquant、/smart-analysis 等请求直接发到隧道，绕过 Cloudflare 边缘函数自环限制。
+          VITE_API_BASE: https://6a700475-2d33-4979-a6e0-897cb864f783.cfargotunnel.com
 
       - name: Deploy to Cloudflare Pages
         working-directory: Vibe-Trading
