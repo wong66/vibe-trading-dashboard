@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
 import { request } from "@/lib/api";
 import { toast } from "sonner";
 
+const API_BASE: string = (import.meta as any).env?.VITE_API_BASE ?? "";
+
 // ── Types ──────────────────────────────────────────────────────────────
 
 interface ImportResult {
@@ -198,7 +200,7 @@ export function AquantDelivery() {
     formData.append("file", file);
 
     try {
-      const res = await fetch("/aquant/delivery/import", {
+      const res = await fetch(`${API_BASE}/aquant/delivery/import`, {
         method: "POST",
         headers: {
           ...(typeof localStorage !== "undefined"
