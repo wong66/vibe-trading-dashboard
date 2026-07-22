@@ -40,6 +40,8 @@ jobs:
           # 隧道为 Named Tunnel，地址固定不变；凭据在用户 Mac 的 ~/.cloudflared/，不会进仓库。
           # 前端据此把 /aquant、/smart-analysis 等请求直接发到隧道，绕过 Cloudflare 边缘函数自环限制。
           VITE_API_BASE: https://6a700475-2d33-4979-a6e0-897cb864f783.cfargotunnel.com
+          # 每日选股分析（dsa-web，5173）独立隧道，iframe 直连，绕过路径代理导致的绝对资源 404。
+          VITE_DSA_BASE: https://27ef24af-27d0-407f-a9ca-b2b8b0fd469d.cfargotunnel.com
 
       - name: Deploy to Cloudflare Pages
         working-directory: Vibe-Trading
