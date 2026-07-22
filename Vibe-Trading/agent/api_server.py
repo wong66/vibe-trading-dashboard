@@ -19,9 +19,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import httpx
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from rich.console import Console
 
 from .auth import require_auth, require_event_stream_auth, require_local_or_auth
@@ -66,6 +67,7 @@ app = FastAPI(
 _DEFAULT_CORS_ORIGINS = [
     "http://localhost:3000", "http://localhost:5173", "http://localhost:8000",
     "http://127.0.0.1:3000", "http://127.0.0.1:5173", "http://127.0.0.1:8000",
+    "https://vibe-trading-dashboard-awi.pages.dev",
 ]
 
 
@@ -105,6 +107,52 @@ app.include_router(live_router, prefix="")
 app.include_router(session_router, prefix="")
 app.include_router(swarm_router, prefix="")
 app.include_router(system_extra_router, prefix="")
+
+# ============================================================================
+# PEG 估值反向代理  (/peg-api/* -> 本地 astock-peg :3000 /api/*)
+# 让 PEG 页面复用主隧道 vt-backend，无需额外隧道进程。
+# 前端 PEG_API="/peg-api"（相对路径），直连隧道时同源打到本路由，
+# 本路由在 Mac 本地把请求转发给 127.0.0.1:3000，绕过公网与自环限制。
+# ============================================================================
+_PEG_BACKEND = os.getenv("PEG_BACKEND_URL", "http://127.0.0.1:3000")
+_peg_client: Optional[httpx.AsyncClient] = None
+
+
+def _get_peg_client() -> httpx.AsyncClient:
+    global _peg_client
+    if _peg_client is None:
+        _peg_client = httpx.AsyncClient(timeout=30.0)
+    return _peg_client
+
+
+@app.api_route(
+    "/peg-api/{full_path:path}",
+    methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+)
+async def proxy_peg_api(full_path: str, request: Request):
+    target = f"{_PEG_BACKEND}/api/{full_path}"
+    _skip_req = {"host", "content-length", "connection",
+                 "transfer-encoding", "upgrade", "accept-encoding"}
+    headers = {k: v for k, v in request.headers.items()
+               if k.lower() not in _skip_req}
+    body = await request.body() if request.method in ("POST", "PUT", "PATCH") else None
+    client = _get_peg_client()
+    upstream = await client.request(
+        request.method, target,
+        params=request.url.query,
+        headers=headers,
+        content=body,
+    )
+    _skip_resp = {"content-length", "content-encoding",
+                  "transfer-encoding", "connection"}
+    resp_headers = {k: v for k, v in upstream.headers.items()
+                    if k.lower() not in _skip_resp}
+    return Response(
+        content=upstream.content,
+        status_code=upstream.status_code,
+        headers=resp_headers,
+    )
+
 
 # ============================================================================
 # SPA deep-link fallback
