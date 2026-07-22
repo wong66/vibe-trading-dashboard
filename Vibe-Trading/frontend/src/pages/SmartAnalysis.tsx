@@ -16,6 +16,8 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 
+const API_BASE: string = (import.meta as any).env?.VITE_API_BASE ?? "";
+
 // ──────────────────────────────────────────────
 // Types
 // ──────────────────────────────────────────────
@@ -169,7 +171,7 @@ function AnalyzePanel() {
       setError(null);
       setResult(null);
       try {
-        const res = await fetch("/smart-analysis/analysis/market-review", { method: "POST" });
+        const res = await fetch(`${API_BASE}/smart-analysis/analysis/market-review`, { method: "POST" });
         if (!res.ok) {
           const body = await res.json().catch(() => null);
           throw new Error(body?.detail ?? body?.message ?? `HTTP ${res.status}`);
@@ -181,7 +183,7 @@ function AnalyzePanel() {
         let done = false;
         while (!done) {
           await new Promise((r) => setTimeout(r, 2000));
-          const st = await fetch(`/smart-analysis/analysis/status/${taskId}`).then((r) => r.json());
+          const st = await fetch(`${API_BASE}/smart-analysis/analysis/status/${taskId}`).then((r) => r.json());
           if (st.status === "completed") {
             done = true;
             setResult(renderReport(st.result));
@@ -228,7 +230,7 @@ function AnalyzePanel() {
     setResult(null);
 
     try {
-      const res = await fetch("/smart-analysis/analysis/analyze", {
+      const res = await fetch(`${API_BASE}/smart-analysis/analysis/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -262,7 +264,7 @@ function AnalyzePanel() {
         let done = false;
         while (!done) {
           await new Promise((r) => setTimeout(r, 1500));
-          const st = await fetch(`/smart-analysis/analysis/status/${task.task_id}`).then((r) => r.json());
+          const st = await fetch(`${API_BASE}/smart-analysis/analysis/status/${task.task_id}`).then((r) => r.json());
           if (st.status === "completed") {
             done = true;
             results.push(renderReport(st.result));
@@ -353,7 +355,7 @@ function HistoryPanel() {
   const loadHistory = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/smart-analysis/history");
+      const res = await fetch(`${API_BASE}/smart-analysis/history`);
       const data = await res.json();
       // Backend returns { total, page, limit, items: [...] }
       // Each item has query_id (not task_id)
@@ -384,7 +386,7 @@ function HistoryPanel() {
     }
     // Fetch full report from backend
     try {
-      const res = await fetch(`/smart-analysis/history/${task.task_id}`);
+      const res = await fetch(`${API_BASE}/smart-analysis/history/${task.task_id}`);
       const data = await res.json();
       // Backend may return { report: {...} } or direct report object
       const reportData = data.report ?? data;
