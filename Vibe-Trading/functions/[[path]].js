@@ -99,14 +99,11 @@ export async function onRequest(context) {
     return proxyPass(request, upstream);
   }
 
-  // 3) 主后端 / 智能分析
+  // 3) 主后端 / 智能分析：前端已改为直连隧道（见 VITE_API_BASE），
+  //    此处不再经边缘函数转发，避免 fetch 自带隧道域名(cfargotunnel.com)触发自环。
   const kind = routeKind(path, wantsHtml);
   if (kind === "api") {
-    if (!env.BACKEND_URL) {
-      return json(503, "后端未配置：请先运行 deploy-vt-cf.sh 创建 Cloudflare Tunnel");
-    }
-    const upstream = env.BACKEND_URL.replace(/\/$/, "") + path + url.search;
-    return proxyPass(request, upstream);
+    return serveStatic(context);
   }
   if (kind === "spa") return serveStatic(context);
   return serveStatic(context);
