@@ -1,18 +1,13 @@
-# ============================================================================
 # 自动部署 Vibe-Trading 前端到 Cloudflare Pages
-# 触发：每次 git push 到 main 分支
-# 流程：检出代码 → 安装 Node → 构建前端 → 用 wrangler 部署到 Cloudflare Pages
-# 需要的 GitHub Secrets（仓库 Settings → Secrets → Actions）：
-#   CLOUDFLARE_API_TOKEN   —— Cloudflare API Token，权限模板选 "Cloudflare Pages:Edit"
-#   CLOUDFLARE_ACCOUNT_ID  —— Cloudflare 账号 ID（仪表盘右侧栏）
-# ============================================================================
+# 触发：每次 git push 到 main，或手动 workflow_dispatch
+# Secrets：CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID（已在仓库 Settings 配好）
 
 name: Deploy Vibe-Trading to Cloudflare Pages
 
 on:
   push:
     branches: [main]
-  workflow_dispatch: {}   # 允许在 Actions 页面手动触发
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -32,12 +27,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: Vibe-Trading/frontend/package-lock.json
 
       - name: Install frontend dependencies
         working-directory: Vibe-Trading/frontend
-        run: npm ci
+        run: npm install
 
       - name: Build frontend
         working-directory: Vibe-Trading/frontend
