@@ -4,7 +4,11 @@ import { BarChart3, Activity, LineChart as LineChartIcon, Newspaper } from "luci
 import { cn } from "@/lib/utils";
 
 // ── API base ───────────────────────────────────────────────────────────
-export const PEG_API = "/peg-api";
+// 网页版：VITE_API_BASE 是主隧道地址，PEG 经主隧道打到主后端 8898，
+// 由主后端在 Mac 本地把 /peg-api 代理到 3000（astock-peg），绕过 Cloudflare 自环。
+// 本地开发：VITE_API_BASE 为空，退化为 /peg-api，由 vite dev proxy 转发。
+const PEG_BASE: string = (import.meta as any).env?.VITE_API_BASE ?? "";
+export const PEG_API = `${PEG_BASE}/peg-api`;
 
 // ── Types ──────────────────────────────────────────────────────────────
 
