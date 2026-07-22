@@ -6,10 +6,10 @@ import json
 from pathlib import Path
 
 from backtest.loaders.registry import VALID_SOURCES
-from src.agent.progress import emit_progress
-from src.agent.tools import BaseTool
-from src.core.runner import Runner
-from src.tools.path_utils import safe_run_dir
+from agent.src.agent.progress import emit_progress
+from agent.src.agent.tools import BaseTool
+from agent.src.core.runner import Runner
+from agent.src.tools.path_utils import safe_run_dir
 
 
 def run_backtest(run_dir: str) -> str:

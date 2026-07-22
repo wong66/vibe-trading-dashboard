@@ -14,21 +14,21 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-from src.agent.context import ContextBuilder
-from src.agent.progress import HeartbeatTimer
-from src.agent.skills import SkillsLoader
-from src.agent.tools import ToolRegistry
-from src.config.schema import AgentConfig
-from src.providers.chat import ChatLLM
-from src.swarm.models import (
+from agent.src.agent.context import ContextBuilder
+from agent.src.agent.progress import HeartbeatTimer
+from agent.src.agent.skills import SkillsLoader
+from agent.src.agent.tools import ToolRegistry
+from agent.src.config.schema import AgentConfig
+from agent.src.providers.chat import ChatLLM
+from agent.src.swarm.models import (
     SwarmAgentSpec,
     SwarmEvent,
     SwarmTask,
     WorkerResult,
 )
-from src.tools import build_swarm_registry
-from src.tools.mcp import MCPRemoteTool
-from src.tools.redaction import is_sensitive_arg, redact_payload
+from agent.src.tools import build_swarm_registry
+from agent.src.tools.mcp import MCPRemoteTool
+from agent.src.tools.redaction import is_sensitive_arg, redact_payload
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +129,7 @@ def _estimate_tokens(
         zero — that simply means the provider didn't report it and the
         fallback couldn't compute it either (e.g. binary content).
     """
-    from src.providers.chat import LLMResponse
+    from agent.src.providers.chat import LLMResponse
 
     if isinstance(response, LLMResponse) and response.usage_metadata:
         usage = response.usage_metadata

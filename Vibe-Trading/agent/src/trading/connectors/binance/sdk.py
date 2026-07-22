@@ -30,7 +30,7 @@ from types import ModuleType
 from typing import Any, Mapping
 from urllib.parse import urlparse
 
-from src.config.paths import get_runtime_root
+from agent.src.config.paths import get_runtime_root
 
 CONFIG_FILENAME = "binance.json"
 

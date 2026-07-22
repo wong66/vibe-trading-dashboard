@@ -40,15 +40,15 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable, Mapping, Protocol
 
-from src.live.audit import LiveActionEvent, write_live_action
-from src.live.halt import halt_flag_set, trip_halt
-from src.live.mandate.model import Mandate
-from src.live.mandate.store import load_mandate
-from src.live.runtime.flatten import flatten_and_cancel
-from src.live.runtime.jobstore import JobStore
-from src.live.runtime.liveness import write_heartbeat
-from src.live.runtime.scheduler import Job, Scheduler
-from src.live.runtime.triggers import Trigger, due_now
+from agent.src.live.audit import LiveActionEvent, write_live_action
+from agent.src.live.halt import halt_flag_set, trip_halt
+from agent.src.live.mandate.model import Mandate
+from agent.src.live.mandate.store import load_mandate
+from agent.src.live.runtime.flatten import flatten_and_cancel
+from agent.src.live.runtime.jobstore import JobStore
+from agent.src.live.runtime.liveness import write_heartbeat
+from agent.src.live.runtime.scheduler import Job, Scheduler
+from agent.src.live.runtime.triggers import Trigger, due_now
 
 logger = logging.getLogger(__name__)
 

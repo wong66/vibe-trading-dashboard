@@ -16,7 +16,7 @@ from functools import wraps
 from pathlib import Path
 from typing import Callable, TypeVar
 
-from src.goal.models import (
+from agent.src.goal.models import (
     AuditRow,
     EvidenceInput,
     EvidenceRecord,
@@ -27,8 +27,8 @@ from src.goal.models import (
     RiskTier,
     StaleGoalError,
 )
-from src.goal.policy import normalize_required_text, reject_live_execution_objective
-from src.tools.path_utils import safe_document_path, safe_run_id
+from agent.src.goal.policy import normalize_required_text, reject_live_execution_objective
+from agent.src.tools.path_utils import safe_document_path, safe_run_id
 
 _DEFAULT_DB_PATH = Path.home() / ".vibe-trading" / "sessions.db"
 _DB_PATH_ENV = "VIBE_TRADING_GOAL_DB_PATH"

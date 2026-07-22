@@ -39,8 +39,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Callable
 
-from src.live.audit import LiveActionEvent, write_live_action
-from src.live.mandate.store import load_mandate
+from agent.src.live.audit import LiveActionEvent, write_live_action
+from agent.src.live.mandate.store import load_mandate
 
 logger = logging.getLogger(__name__)
 
@@ -275,7 +275,7 @@ def _flatten_open_positions(
 def _sweep_tool(broker: str, operation: str, fallback: str) -> str:
     """Return the connector-specific sweep tool name for audit records."""
     try:
-        from src.trading.service import runner_tool_name
+        from agent.src.trading.service import runner_tool_name
 
         return runner_tool_name(broker, operation) or fallback
     except Exception:  # pragma: no cover - audit should not fail the sweep

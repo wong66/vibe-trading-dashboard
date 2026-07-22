@@ -33,7 +33,7 @@ from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 
-from src.live.mandate.model import (
+from agent.src.live.mandate.model import (
     AssetClass,
     InstrumentType,
     Mandate,

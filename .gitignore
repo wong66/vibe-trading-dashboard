@@ -74,7 +74,11 @@ astock-peg/web/.claude/
 astock-peg/开发日志.md
 
 # Vibe-Trading specific
+Vibe-Trading/A股量化决策/
 Vibe-Trading/data/*.duckdb
+
+# 根级旧数据壳（运行数据，不入库）
+A股量化决策/
 Vibe-Trading/data/*.duckdb.wal
 Vibe-Trading/data/.duckdb_tmp/
 Vibe-Trading/data/parquet/
@@ -112,10 +116,10 @@ Vibe-Trading/wiki/alpha-library/content/
 Vibe-Trading/wiki/.cache/
 Vibe-Trading/.wrangler/
 
-# CodeBuddy / WorkBuddy internal
+# CodeBuddy / WorkBuddy internal（本地记忆/配置，不入库）
 .claude/*
 !.claude/hooks.json
-.workbuddy/screenshots/
+.workbuddy/
 .codebuddy/
 
 # Coverage

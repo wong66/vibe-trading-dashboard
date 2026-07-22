@@ -15,7 +15,8 @@
     --primary-foreground: 0 0% 100%;
 
     --muted: 220 14% 92%;
-    --muted-foreground: 220 14% 46%;
+    /* 次级文字改为近黑（原 220 14% 46% 灰，难读）→ 用户要求清晰可读 */
+    --muted-foreground: 220 20% 12%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --border: 220 14% 87%;
@@ -29,8 +30,8 @@
 
     /* Chart tokens */
     --chart-grid: 220 14% 90%;
-    --chart-text: 220 14% 46%;
-    --chart-axis: 220 14% 80%;
+    --chart-text: 220 20% 20%;
+    --chart-axis: 220 14% 70%;
     --chart-compare-a: #3b82f6;
     --chart-compare-b: #f59e0b;
   }
@@ -46,7 +47,7 @@
     --primary-foreground: 0 0% 100%;
 
     --muted: 220 20% 13%;           /* surface-2 */
-    --muted-foreground: 220 10% 55%;
+    --muted-foreground: 220 10% 68%;
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
     --border: 220 20% 18%;          /* surface-3 */
@@ -59,14 +60,18 @@
 
     /* Chart tokens */
     --chart-grid: 220 20% 12%;
-    --chart-text: 220 10% 42%;
-    --chart-axis: 220 20% 22%;
+    --chart-text: 220 10% 58%;
+    --chart-axis: 220 20% 28%;
     --chart-compare-a: #60a5fa;
     --chart-compare-b: #fbbf24;
   }
 
   * { @apply border-border; }
-  body { @apply bg-background text-foreground; }
+  body { @apply bg-background text-foreground; font-weight: 500; }
+
+  /* 默认字重加粗到 medium，标题加粗到 bold——原 400 在 Inter 小字号下偏细难读 */
+  h1, h2, h3, h4, h5, h6 { font-weight: 700; }
+  .font-normal { font-weight: 500; }
 
   /* Prose table enhancements */
   .prose table { border-collapse: collapse; width: 100%; }
@@ -85,4 +90,15 @@
   0%   { transform: translateX(-100%); }
   50%  { transform: translateX(200%); }
   100% { transform: translateX(-100%); }
+}
+
+/* =============================================================
+   UI 可读性规则（项目约定）：Vibe-Trading 内禁止"灰字难读"
+   - 所有 text-muted-foreground（含 /30~/80 透明度变体、placeholder 变体）
+     强制为近黑前景色，不再用灰度区分层级 → 白底下清晰可读。
+   - 深色模式下 --foreground 为浅色，自动反向生效。
+   - 重点信息请用红/绿/橙/蓝等语义色突出，不要用灰色弱化。
+   ============================================================= */
+[class*="text-muted-foreground"] {
+  color: hsl(var(--foreground)) !important;
 }

@@ -23,15 +23,15 @@ from typing import Any
 
 import pandas as pd
 
-from src.shadow_account.codegen import write_run_dir
-from src.shadow_account.models import (
+from agent.src.shadow_account.codegen import write_run_dir
+from agent.src.shadow_account.models import (
     AttributionBreakdown,
     ShadowBacktestResult,
     ShadowProfile,
 )
-from src.shadow_account.storage import runs_dir
-from src.tools.trade_journal_parsers import parse_file, records_to_dataframe
-from src.tools.trade_journal_tool import pair_trades_fifo
+from agent.src.shadow_account.storage import runs_dir
+from agent.src.tools.trade_journal_parsers import parse_file, records_to_dataframe
+from agent.src.tools.trade_journal_tool import pair_trades_fifo
 
 logger = logging.getLogger(__name__)
 
@@ -217,7 +217,7 @@ def _cache_result(run_dir: Path, result: ShadowBacktestResult) -> None:
 
 
 def _default_run_backtest_fn():
-    from src.tools.backtest_tool import run_backtest
+    from agent.src.tools.backtest_tool import run_backtest
     return run_backtest
 
 

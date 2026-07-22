@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.wangzhiping.sectorflow-render</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/wangzhiping/Claude/大A投研看板/sector_flow_pipeline/render_daily.sh</string>
+    </array>
+
+    <!-- 交易日(周一~周五) 15:05 收盘后自动渲染; render_daily.sh 再兜底判周末/无数据 -->
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>15</integer><key>Minute</key><integer>5</integer></dict>
+        <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>15</integer><key>Minute</key><integer>5</integer></dict>
+        <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>15</integer><key>Minute</key><integer>5</integer></dict>
+        <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>15</integer><key>Minute</key><integer>5</integer></dict>
+        <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>15</integer><key>Minute</key><integer>5</integer></dict>
+    </array>
+
+    <key>RunAtLoad</key>
+    <boolean>false</boolean>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/wangzhiping/Claude/大A投研看板/sector_flow_pipeline</string>
+
+    <key>StandardOutPath</key>
+    <string>/Users/wangzhiping/Claude/大A投研看板/sector_flow_pipeline/logs/render.launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/wangzhiping/Claude/大A投研看板/sector_flow_pipeline/logs/render.launchd.err.log</string>
+</dict>
+</plist>

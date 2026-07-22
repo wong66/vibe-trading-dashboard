@@ -7,7 +7,7 @@ operator-declared (config-trust) and order placement is not exposed here.
 
 from __future__ import annotations
 
-from src.trading.types import READ_CAPABILITIES, TradingProfile
+from agent.src.trading.types import READ_CAPABILITIES, TradingProfile
 
 LONGBRIDGE_PROFILES: tuple[TradingProfile, ...] = (
     TradingProfile(

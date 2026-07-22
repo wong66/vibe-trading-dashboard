@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.trading.types import READ_CAPABILITIES, TradingProfile
+from agent.src.trading.types import READ_CAPABILITIES, TradingProfile
 
 IBKR_PROFILES: tuple[TradingProfile, ...] = (
     TradingProfile(

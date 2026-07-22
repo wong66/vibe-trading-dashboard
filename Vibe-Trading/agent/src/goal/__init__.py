@@ -1,6 +1,6 @@
 """Finance research goal runtime primitives."""
 
-from src.goal.models import (
+from agent.src.goal.models import (
     AuditRow,
     EvidenceInput,
     EvidenceRecord,
@@ -11,8 +11,8 @@ from src.goal.models import (
     RiskTier,
     StaleGoalError,
 )
-from src.goal.policy import normalize_required_text, reject_live_execution_objective
-from src.goal.store import GoalStore
+from agent.src.goal.policy import normalize_required_text, reject_live_execution_objective
+from agent.src.goal.store import GoalStore
 
 __all__ = [
     "AuditRow",

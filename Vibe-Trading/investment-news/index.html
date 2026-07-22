@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>投资资讯 · Investment News</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* === 主题变量：与 Vibe-Trading 完全对齐 === */
+  :root {
+    --background:220 20% 98%; --foreground:220 20% 10%;
+    --card:0 0% 100%; --card-foreground:220 20% 10%;
+    --primary:27 90% 52%; --primary-foreground:0 0% 100%;
+    --muted:220 14% 92%; --muted-foreground:220 14% 46%;
+    --border:220 14% 87%; --radius:.5rem;
+    --success:142 71% 45%; --danger:0 84% 60%; --warning:38 92% 50%; --info:217 91% 60%;
+  }
+  /* 深色：prefers-color-scheme 或 JS 添加 .dark class */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background:220 20% 5%; --foreground:220 10% 92%;
+      --card:220 20% 8%; --card-foreground:220 10% 92%;
+      --primary:27 90% 52%; --primary-foreground:0 0% 100%;
+      --muted:220 20% 13%; --muted-foreground:220 10% 55%;
+      --border:220 20% 18%;
+      --success:142 71% 45%; --danger:0 62% 50%; --warning:38 92% 50%; --info:217 91% 60%;
+    }
+  }
+  .dark {
+    --background:220 20% 5%; --foreground:220 10% 92%;
+    --card:220 20% 8%; --card-foreground:220 10% 92%;
+    --primary:27 90% 52%; --primary-foreground:0 0% 100%;
+    --muted:220 20% 13%; --muted-foreground:220 10% 55%;
+    --border:220 20% 18%;
+    --success:142 71% 45%; --danger:0 62% 50%; --warning:38 92% 50%; --info:217 91% 60%;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0; border-color:hsl(var(--border));}
+  html,body{height:100%;}
+  body{font-family:'Inter',system-ui,sans-serif; background:hsl(var(--background));
+    color:hsl(var(--foreground)); -webkit-font-smoothing:antialiased; font-size:14px;}
+  .mono{font-family:'JetBrains Mono',ui-monospace,monospace;}
+  ::-webkit-scrollbar{width:6px;height:6px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:hsl(var(--border));border-radius:3px;}
+  ::-webkit-scrollbar-thumb:hover{background:hsl(var(--muted-foreground));}
+
+  .app{display:flex; height:100vh; overflow:hidden;}
+
+  /* ---- 侧边栏 ---- */
+  .sidebar{width:220px; flex-shrink:0; background:hsl(var(--muted)/.45);
+    border-right:1px solid hsl(var(--border)); display:flex; flex-direction:column;}
+  .brand{display:flex; align-items:center; gap:9px; padding:14px 16px;
+    border-bottom:1px solid hsl(var(--border)); font-weight:700; font-size:14px; letter-spacing:-.01em;}
+  .brand .logo{width:22px; height:22px; border-radius:6px;
+    background:hsl(var(--primary)); display:grid; place-items:center; color:#fff; font-size:13px; font-weight:800;}
+  .brand small{color:hsl(var(--muted-foreground)); font-weight:500; font-size:10.5px;}
+  .refresh{margin-left:auto; width:28px; height:28px; flex-shrink:0; border-radius:7px; padding:0;
+    border:1px solid hsl(var(--border)); background:transparent; color:hsl(var(--muted-foreground));
+    cursor:pointer; display:grid; place-items:center; transition:all .14s;}
+  .refresh:hover{color:hsl(var(--primary)); border-color:hsl(var(--primary)/.4); background:hsl(var(--primary)/.08);}
+  .refresh .ri{font-size:16px; line-height:1; display:block;}
+  .refresh.spin{color:hsl(var(--primary)); border-color:hsl(var(--primary)/.4); pointer-events:none;}
+  .refresh.spin .ri{animation:spin .9s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  /* GitHub 角标：嵌入模式下隐藏 */
+  .gh{position:fixed; top:14px; right:18px; z-index:50; width:34px; height:34px; border-radius:8px;
+    display:grid; place-items:center; color:hsl(var(--muted-foreground));
+    border:1px solid hsl(var(--border)); background:hsl(var(--card)/.65); backdrop-filter:blur(6px);
+    transition:all .14s; text-decoration:none;}
+  .gh:hover{color:hsl(var(--foreground)); border-color:hsl(var(--primary)/.5); background:hsl(var(--primary)/.1);}
+  .embed .gh{display:none;}
+  .nav{flex:1; overflow:auto; padding:6px;}
+  .nav-label{font-size:10px; letter-spacing:.14em; text-transform:uppercase;
+    color:hsl(var(--muted-foreground)); padding:10px 12px 6px;}
+  .nav-item{display:flex; align-items:center; gap:10px; padding:7px 12px; border-radius:7px;
+    cursor:pointer; color:hsl(var(--muted-foreground)); transition:all .12s; user-select:none; font-size:13px;}
+  .nav-item:hover{background:hsl(var(--muted)); color:hsl(var(--foreground));}
+  .nav-item .dot{width:8px; height:8px; border-radius:50%; flex-shrink:0;}
+  .nav-item .nm{flex:1; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .nav-item .cnt{font-size:11px; color:hsl(var(--muted-foreground));}
+  .nav-item.active{font-weight:600;}
+  .foot{border-top:1px solid hsl(var(--border)); padding:10px 14px;
+    font-size:10.5px; color:hsl(var(--muted-foreground)); line-height:1.6;}
+
+  /* ---- 主区 ---- */
+  .main{flex:1; overflow:auto;}
+  .head{padding:22px 28px 16px; border-bottom:1px solid hsl(var(--border)); position:sticky; top:0;
+    background:hsl(var(--background)/.85); backdrop-filter:blur(8px); z-index:5;}
+  .head .ttl{display:flex; align-items:center; gap:10px;}
+  .head .bdg{width:28px; height:28px; border-radius:8px; display:grid; place-items:center; font-size:14px;}
+  .head h1{font-size:22px; font-weight:700; letter-spacing:-.02em;}
+  .head .sub{margin-top:6px; font-size:12px; color:hsl(var(--muted-foreground));}
+  .head .sub b{color:hsl(var(--foreground));}
+  .head .sub .pill{display:inline-block; padding:1px 7px; border-radius:999px; margin-left:5px;
+    font-size:10.5px; font-family:'JetBrains Mono',monospace;}
+
+  /* ---- 长条列表 ---- */
+  .list{padding:14px 24px 60px; display:flex; flex-direction:column; gap:5px; max-width:1280px;}
+  .row{display:flex; align-items:center; gap:12px; padding:10px 14px; border:1px solid hsl(var(--border));
+    border-radius:8px; background:hsl(var(--card)); transition:border-color .14s, background .14s;}
+  .row:hover{background:hsl(var(--muted)/.30);}
+  .row .rdot{width:7px; height:7px; border-radius:50%; flex-shrink:0;}
+  .row .rbody{flex:1; min-width:0;}
+  .row .rt{font-weight:600; font-size:14px; line-height:1.4; letter-spacing:-.005em;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .row a.rt{color:inherit; text-decoration:none; display:block;}
+  .row a.rt:hover{color:hsl(var(--primary));}
+  .row .rs{margin-top:2px; font-size:11.5px; line-height:1.4; color:hsl(var(--muted-foreground));
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .row .rmeta{flex-shrink:0; display:flex; align-items:center; gap:10px;}
+  .row .rsrc{font-family:'JetBrains Mono',monospace; font-size:10.5px; padding:2px 8px; border-radius:5px;
+    font-weight:500; white-space:nowrap; max-width:150px; overflow:hidden; text-overflow:ellipsis;}
+  .row .rtm{font-family:'JetBrains Mono',monospace; font-size:11.5px; color:hsl(var(--muted-foreground));
+    white-space:nowrap; min-width:80px; text-align:right; font-variant-numeric:tabular-nums;}
+  .empty{padding:50px 28px; color:hsl(var(--muted-foreground)); font-size:13px;}
+  /* ---- AI 今日要点卡 ---- */
+  .digest{margin:16px 24px 2px; max-width:1280px; border:1px solid; border-radius:12px; padding:14px 18px 14px;}
+  .digest .dh{font-family:'JetBrains Mono',monospace; font-size:11.5px; font-weight:700; letter-spacing:.06em;
+    margin-bottom:10px; display:flex; align-items:center; gap:7px;}
+  .digest .dh .dn{color:hsl(var(--muted-foreground)); font-weight:400; letter-spacing:0;}
+  .digest ul{list-style:none; display:flex; flex-direction:column; gap:8px;}
+  .digest li{display:flex; align-items:flex-start; gap:10px; font-size:14px; line-height:1.5; color:hsl(var(--foreground));}
+  .digest li .b{width:5px; height:5px; border-radius:50%; margin-top:8px; flex-shrink:0;}
+  .digest li .pt{flex:1; min-width:0;}
+  .digest li .dj{flex-shrink:0; text-decoration:none; font-size:13px; font-weight:700; opacity:.4;
+    margin-top:0; padding:0 2px; transition:opacity .12s, transform .12s; line-height:1.5;}
+  .digest li:hover .dj{opacity:.85;}
+  .digest li .dj:hover{opacity:1; transform:translate(1px,-1px);}
+  .row .ren{margin-top:3px; font-size:11px; line-height:1.35; color:hsl(var(--muted-foreground));
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; opacity:.8;}
+</style>
+</head>
+<body>
+<a class="gh" href="https://github.com/simonlin1212/investment-news" target="_blank" rel="noopener" title="在 GitHub 上查看 / Star">
+  <svg viewBox="0 0 16 16" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.65 7.65 0 012-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+</a>
+<div id="appRoot" class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo">▲</span>
+      <div class="bt">投资资讯<br><small>Investment News</small></div>
+      <button class="refresh" id="refreshBtn" title="刷新:重新抓取 + AI 要点 + 翻译"><span class="ri">⟳</span></button>
+    </div>
+    <div class="nav" id="nav"><div class="nav-label">赛道 / Sectors</div></div>
+    <div class="foot" id="foot"></div>
+  </aside>
+  <main class="main">
+    <div class="head" id="head"></div>
+    <div id="board"></div>
+  </main>
+</div>
+<script>
+// ── 主题同步：监听父窗口 (Vibe-Trading) 的 postMessage ──
+function applyTheme(theme) {
+  document.documentElement.classList.toggle('dark', theme === 'dark');
+}
+// 检测 embed 模式
+(function(){
+  var p = new URLSearchParams(location.search);
+  if(p.get('embed')==='1') document.body.classList.add('embed');
+  // 父窗口主题同步
+  window.addEventListener('message', function(e){
+    if(e.data && e.data.type === 'theme') applyTheme(e.data.theme);
+  });
+  // 请求父窗口当前主题
+  if(window.parent !== window){
+    window.parent.postMessage({type:'news-iframe-ready'}, '*');
+  }
+})();
+
+function boot(){
+  var D = window.DATA || {industries:[]};
+  var inds = D.industries || [];
+  var nav = document.getElementById('nav');
+  var active = inds.length ? inds[0].key : null;
+
+  function hexA(hex, a){ // #rrggbb + alpha(0-1) -> rgba
+    var n = hex.replace('#','');
+    var r=parseInt(n.substr(0,2),16), g=parseInt(n.substr(2,2),16), b=parseInt(n.substr(4,2),16);
+    return 'rgba('+r+','+g+','+b+','+a+')';
+  }
+
+  // 侧边栏
+  inds.forEach(function(ind){
+    var el = document.createElement('div');
+    el.className = 'nav-item'; el.dataset.key = ind.key;
+    el.innerHTML = '<span class="dot" style="background:'+ind.accent+'"></span>'
+      + '<span class="nm">'+ind.name+'</span>'
+      + '<span class="cnt">'+ind.total+'</span>';
+    el.onclick = function(){ setActive(ind.key); };
+    nav.appendChild(el);
+  });
+
+  document.getElementById('foot').innerHTML =
+    '<b style="color:hsl(var(--foreground))">'+(D.stats?D.stats.total_sources:'–')+'</b> 个源 · '
+    + inds.length + ' 赛道<br><span style="opacity:.72">本地运行 · 你的 AI</span>'
+    + '<br><span style="opacity:.5;font-size:10px">仅资讯，非投资建议 · Not financial advice</span>';
+
+  function setActive(key){
+    active = key;
+    var ind = inds.find(function(x){return x.key===key;});
+    // 侧边栏高亮
+    document.querySelectorAll('.nav-item').forEach(function(n){
+      var on = n.dataset.key===key; n.classList.toggle('active', on);
+      n.style.background = on ? hexA(ind.accent,0.12) : '';
+      n.querySelector('.nm').style.color = on ? ind.accent : '';
+    });
+    renderMain(ind);
+  }
+
+  function renderMain(ind){
+    var ac = ind.accent;
+    document.getElementById('head').innerHTML =
+      '<div class="ttl"><span class="bdg" style="background:'+hexA(ac,0.14)+';color:'+ac+'">●</span>'
+      + '<h1>'+ind.name+'</h1></div>'
+      + '<div class="sub">共 <b>'+ind.total+'</b> 个信息源 · 本栏 <b>'+ind.items.length+'</b> 条'
+      + '<span class="pill" style="background:'+hexA(ac,0.12)+';color:'+ac+'">最近 '+(D.recent_days||120)+' 天</span>'
+      + ' · 更新 '+(D.generated_at||'')+' · 本地抓取';
+    var board = document.getElementById('board');
+    if(!ind.items.length){ board.className=''; board.innerHTML = '<div class="empty">该行业暂未抓到条目。</div>'; return; }
+
+    // AI 今日要点卡
+    var pts = ind.points || [];
+    var digest = pts.length ? (
+      '<div class="digest" style="border-color:'+hexA(ac,0.30)+';background:'+hexA(ac,0.06)+'">'
+      + '<div class="dh" style="color:'+ac+'">✦ AI 今日要点</div>'
+      + '<ul>' + pts.map(function(p){
+          var t = (typeof p === 'string') ? p : (p.t||'');
+          var url = (p && typeof p === 'object') ? (p.url||'') : '';
+          var jump = url ? '<a class="dj" href="'+url+'" target="_blank" rel="noopener" title="跳转原文" style="color:'+ac+'">↗</a>' : '';
+          return '<li><span class="b" style="background:'+ac+'"></span><span class="pt">'+esc(t)+'</span>'+jump+'</li>';
+        }).join('') + '</ul></div>'
+    ) : '';
+
+    // 新闻行(中文标题 + 原文小字)
+    var rows = ind.items.map(function(it){
+      var hasZh = it.zh && it.zh.trim();
+      var primary = esc(hasZh ? it.zh : it.title);
+      var secondary = hasZh ? esc(it.title) : esc(it.summary||'');
+      var link = it.url ? '<a class="rt" href="'+it.url+'" target="_blank" rel="noopener">'+primary+'</a>'
+                        : '<span class="rt">'+primary+'</span>';
+      return '<div class="row" onmouseover="this.style.borderColor=\''+hexA(ac,0.45)+'\'" onmouseout="this.style.borderColor=\'\'">'
+        + '<span class="rdot" style="background:'+ac+'"></span>'
+        + '<div class="rbody">' + link
+        + (secondary?'<div class="'+(hasZh?'ren':'rs')+'">'+secondary+'</div>':'')
+        + '</div>'
+        + '<div class="rmeta">'
+        +   '<span class="rsrc" style="background:'+hexA(ac,0.12)+';color:'+ac+'">'+esc(it.source)+'</span>'
+        +   '<span class="rtm">'+esc(it.time||'—')+'</span>'
+        + '</div></div>';
+    }).join('');
+
+    board.className='';
+    board.innerHTML = digest + '<div class="list">' + rows + '</div>';
+  }
+  function esc(s){return (s||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+
+  if(active) setActive(active);
+
+  var rb = document.getElementById('refreshBtn');
+  if(rb) rb.onclick = function(){
+    if(rb.classList.contains('spin')) return;
+    rb.classList.add('spin');
+    fetch('/api/refresh', {method:'POST'})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d && d.ok){ location.reload(); }
+        else { rb.classList.remove('spin'); alert('刷新失败:\n'+((d&&d.error)||'未知错误')); }
+      })
+      .catch(function(e){ rb.classList.remove('spin');
+        alert('刷新失败: '+e+'\n(刷新需用 server.py 启动看板,纯静态服务没有刷新接口)'); });
+  };
+}
+var _s=document.createElement('script'); _s.src='data.js?t='+Date.now(); _s.onload=boot;
+_s.onerror=function(){document.getElementById('board').innerHTML='<div class="empty">数据加载失败</div>';};
+document.head.appendChild(_s);
+</script>
+</body>
+</html>

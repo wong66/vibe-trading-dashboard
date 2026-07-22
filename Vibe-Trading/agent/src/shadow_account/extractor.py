@@ -25,10 +25,10 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from src.shadow_account.models import ShadowProfile, ShadowRule
-from src.shadow_account.storage import hash_journal, new_shadow_id, now_iso
-from src.tools.trade_journal_parsers import parse_file, records_to_dataframe
-from src.tools.trade_journal_tool import pair_trades_fifo
+from agent.src.shadow_account.models import ShadowProfile, ShadowRule
+from agent.src.shadow_account.storage import hash_journal, new_shadow_id, now_iso
+from agent.src.tools.trade_journal_parsers import parse_file, records_to_dataframe
+from agent.src.tools.trade_journal_tool import pair_trades_fifo
 
 logger = logging.getLogger(__name__)
 

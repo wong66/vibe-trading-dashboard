@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from src.providers.llm import build_llm
+from agent.src.providers.llm import build_llm
 
 
 def _dedupe_finish_reason(raw: str) -> str:

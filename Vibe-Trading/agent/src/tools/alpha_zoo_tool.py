@@ -15,7 +15,7 @@ import json
 import logging
 from typing import Any
 
-from src.agent.tools import BaseTool
+from agent.src.agent.tools import BaseTool
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ def _ok(result: Any) -> str:
 def _get_registry() -> Any:
     """Lazy-import Registry so this tool's import never triggers a zoo scan
     until the agent actually calls it."""
-    from src.factors.registry import Registry  # local import; intentional
+    from agent.src.factors.registry import Registry  # local import; intentional
 
     return Registry()
 

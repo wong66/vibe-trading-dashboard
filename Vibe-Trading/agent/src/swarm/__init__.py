@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.swarm.models import (
+from agent.src.swarm.models import (
     RunStatus,
     SwarmAgentSpec,
     SwarmEvent,
@@ -11,10 +11,10 @@ from src.swarm.models import (
     TaskStatus,
     WorkerResult,
 )
-from src.swarm.presets import build_run_from_preset, inspect_preset, list_presets, load_preset
-from src.swarm.runtime import SwarmRuntime
-from src.swarm.store import SwarmStore
-from src.swarm.worker import run_worker
+from agent.src.swarm.presets import build_run_from_preset, inspect_preset, list_presets, load_preset
+from agent.src.swarm.runtime import SwarmRuntime
+from agent.src.swarm.store import SwarmStore
+from agent.src.swarm.worker import run_worker
 
 __all__ = [
     "RunStatus",

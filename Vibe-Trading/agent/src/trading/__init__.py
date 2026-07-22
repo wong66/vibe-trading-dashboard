@@ -1,12 +1,12 @@
 """Trading connector profiles and operations."""
 
-from src.trading.profiles import (
+from agent.src.trading.profiles import (
     list_profiles,
     load_selected_profile_id,
     profile_by_id,
     save_selected_profile_id,
 )
-from src.trading.service import (
+from agent.src.trading.service import (
     check_connection,
     get_account,
     get_history,
@@ -14,7 +14,7 @@ from src.trading.service import (
     get_positions,
     get_quote,
 )
-from src.trading.types import TradingProfile
+from agent.src.trading.types import TradingProfile
 
 __all__ = [
     "TradingProfile",

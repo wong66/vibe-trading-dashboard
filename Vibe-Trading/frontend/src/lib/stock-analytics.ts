@@ -631,24 +631,173 @@ export function pePsSeries(
   const validPe = peValues.filter(v => v != null) as number[];
   const validPs = psValues.filter(v => v != null) as number[];
 
-  const calcMeanStd = (arr: number[]): { mean: number | null; std: number | null } => {
-    if (arr.length < 2) return { mean: null, std: null };
-    const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
-    const variance = arr.reduce((s, v) => s + (v - mean) ** 2, 0) / arr.length;
-    return { mean, std: Math.sqrt(variance) };
+  // ── 异常值处理：微利季度导致 PE/PS 爆炸（如 400+），会拉垮整张图 ──
+  // 策略：用 IQR 检测异常值 → 截断为 null（不参与均值计算 + 图上断开）
+  // 硬上限：PE > 500 或 PS > 100 视为无意义爆炸值，直接剔除
+  const CLEAN = (
+    raw: (number | null)[],
+    hardCap: number,
+  ): { clean: (number | null)[]; stats: { mean: number | null; std: number | null } } => {
+    const arr = raw.filter((v): v is number => v != null && v <= hardCap);
+    if (arr.length < 2) {
+      return {
+        clean: raw.map(v => (v != null && v <= hardCap ? v : null)),
+        stats: { mean: null, std: null },
+      };
+    }
+    // IQR 异常值检测
+    const sorted = [...arr].sort((a, b) => a - b);
+    const q1 = sorted[Math.floor(sorted.length * 0.25)];
+    const q3 = sorted[Math.floor(sorted.length * 0.75)];
+    const iqr = q3 - q1;
+    // 上界 = Q3 + 3*IQR（宽松，只剔除极端离群点）；同时不超过 hardCap
+    const upperBound = Math.min(q3 + 3 * iqr, hardCap);
+
+    // 截断：超界的值设为 null（图上 connectNulls 会跳过该点）
+    const clean = raw.map(v =>
+      v != null && v <= upperBound ? v : null,
+    );
+    // 均值/标准差仅基于未截断的有效值
+    const validForStats = clean.filter((v): v is number => v != null);
+    if (validForStats.length < 2) {
+      return { clean, stats: { mean: null, std: null } };
+    }
+    const mean = validForStats.reduce((a, b) => a + b, 0) / validForStats.length;
+    const variance = validForStats.reduce((s, v) => s + (v - mean) ** 2, 0) / validForStats.length;
+    return { clean, stats: { mean, std: Math.sqrt(variance) } };
   };
 
-  const peStats = calcMeanStd(validPe);
-  const psStats = calcMeanStd(validPs);
+  const peResult = CLEAN(validPe, /* hardCap */ 500);
+  const psResult = CLEAN(validPs, /* hardCap */ 100);
 
   return {
     periods: periodLabels,
-    pe: peValues,
-    ps: psValues,
-    peMean: peStats.mean,
-    peStd: peStats.std,
-    psMean: psStats.mean,
-    psStd: psStats.std,
+    pe: peResult.clean,
+    ps: psResult.clean,
+    peMean: peResult.stats.mean,
+    peStd: peResult.stats.std,
+    psMean: psResult.stats.mean,
+    psStd: psResult.stats.std,
+  };
+}
+
+/**
+ * 周度 PE / PS 序列（密集版，与 RevenueMcapChart 同粒度）
+ *
+ * X 轴 = 每周最后交易日（与市值图一致），每个点用「该周最近季度的 TTM 利润/营收」forward-fill 计算。
+ * 效果：几百个数据点，趋势线连续平滑，不再只有 ~20 个季度稀疏点。
+ */
+export function pePsWeeklySeries(
+  periods: Fundamentals[],
+  mcapHistory: { month: string; date?: string; mcap_yi: number }[],
+): {
+  dates: string[];
+  pe: (number | null)[];
+  ps: (number | null)[];
+  peMean: number | null;
+  peStd: number | null;
+  psMean: number | null;
+  psStd: number | null;
+} {
+  // ── 1. 收集周市值（与 revenueMcapSeries 逐行一致）──
+  const weekly: { date: string; mcap: number }[] = [];
+  for (const m of mcapHistory) {
+    const d = (m.date || m.month || "").slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d) && m.mcap_yi > 0) weekly.push({ date: d, mcap: m.mcap_yi });
+  }
+  weekly.sort((a, b) => a.date.localeCompare(b.date));
+
+  if (!weekly.length) {
+    return { dates: [], pe: [], ps: [], peMean: null, peStd: null, psMean: null, psStd: null };
+  }
+
+  // ── 2. 构建季度 TTM 查找表（按报告期升序，最旧在前）──
+  const ttmList: { period: string; rev: number | null; np: number | null }[] = periods
+    .filter((p): p is Fundamentals => !!p && !!p.period)
+    .map((p) => ({
+      period: p.period,
+      rev: p.ttm?.revenue ?? null,
+      np: p.ttm?.deducted_profit != null ? p.ttm.deducted_profit : (p.ttm?.net_profit ?? null),
+    }))
+    .filter((t) => !!t.period)
+    .sort((a, b) => a.period.localeCompare(b.period));
+
+  // 无任何基本面数据时，X 轴仍给周度日期，PE/PS 全 null（不崩溃）
+  if (!ttmList.length) {
+    return {
+      dates: weekly.map((w) => w.date),
+      pe: weekly.map(() => null),
+      ps: weekly.map(() => null),
+      peMean: null,
+      peStd: null,
+      psMean: null,
+      psStd: null,
+    };
+  }
+
+  // ── 3. 周度 forward-fill：取「<= 该周的最近已发布季度」TTM ──
+  // 亏损季度净利润为负 → PE 无意义，用「最近一次为正」的净利润延续（与市值图连续显示一致）
+  const peValues: (number | null)[] = [];
+  const psValues: (number | null)[] = [];
+  let ttmIdx = -1;
+  let lastPosRev: number | null = null;
+  let lastPosNp: number | null = null;
+
+  for (const w of weekly) {
+    while (ttmIdx < ttmList.length - 1 && ttmList[ttmIdx + 1].period <= w.date) {
+      ttmIdx++;
+      const t = ttmList[ttmIdx];
+      if (t.rev != null && t.rev > 0) lastPosRev = t.rev;
+      if (t.np != null && t.np > 0) lastPosNp = t.np;
+    }
+    if (ttmIdx < 0) {
+      peValues.push(null);
+      psValues.push(null);
+      continue;
+    }
+    psValues.push(lastPosRev != null && w.mcap > 0 ? w.mcap / lastPosRev : null);
+    peValues.push(lastPosNp != null && w.mcap > 0 ? w.mcap / lastPosNp : null);
+  }
+
+  // ── 4. 异常值清洗（与 pePsSeries 共享策略）──
+  const CLEAN = (
+    raw: (number | null)[],
+    hardCap: number,
+  ): { clean: (number | null)[]; stats: { mean: number | null; std: number | null } } => {
+    const arr = raw.filter((v): v is number => v != null && v <= hardCap);
+    if (arr.length < 2) {
+      return {
+        clean: raw.map((v) => (v != null && v <= hardCap ? v : null)),
+        stats: { mean: null, std: null },
+      };
+    }
+    const sorted = [...arr].sort((a, b) => a - b);
+    const q1 = sorted[Math.floor(sorted.length * 0.25)];
+    const q3 = sorted[Math.floor(sorted.length * 0.75)];
+    const iqr = q3 - q1;
+    const upperBound = Math.min(q3 + 3 * iqr, hardCap);
+
+    const clean = raw.map((v) => (v != null && v <= upperBound ? v : null));
+    const validForStats = clean.filter((v): v is number => v != null);
+    if (validForStats.length < 2) {
+      return { clean, stats: { mean: null, std: null } };
+    }
+    const mean = validForStats.reduce((a, b) => a + b, 0) / validForStats.length;
+    const variance = validForStats.reduce((s, v) => s + (v - mean) ** 2, 0) / validForStats.length;
+    return { clean, stats: { mean, std: Math.sqrt(variance) } };
+  };
+
+  const peResult = CLEAN(peValues, 500);
+  const psResult = CLEAN(psValues, 100);
+
+  return {
+    dates: weekly.map((w) => w.date),
+    pe: peResult.clean,
+    ps: psResult.clean,
+    peMean: peResult.stats.mean,
+    peStd: peResult.stats.std,
+    psMean: psResult.stats.mean,
+    psStd: psResult.stats.std,
   };
 }
 
@@ -764,8 +913,8 @@ export function calcValuation(
 
 export type Segment = { name: string; value: number };
 
-export function topSegments(segs: Segment[], topN = 8) {
-  const sorted = [...segs].sort((a, b) => b.value - a.value);
+export function topSegments(segs: Segment[] | null | undefined, topN = 8) {
+  const sorted = [...(segs ?? [])].sort((a, b) => b.value - a.value);
   if (sorted.length <= topN) return sorted;
   const top = sorted.slice(0, topN);
   const rest = sorted.slice(topN);

@@ -1,0 +1,131 @@
+[
+  {
+    "id": "002475_2026-06-23",
+    "ticker": "002475",
+    "name": "立讯精密",
+    "date": "2026-06-23",
+    "status": "failed",
+    "error": "请在 .env 文件中配置 ANTHROPIC_API_KEY 或 OPENAI_API_KEY"
+  },
+  {
+    "id": "002463_2026-06-24",
+    "ticker": "002463",
+    "name": "沪电股份",
+    "date": "2026-06-24",
+    "status": "completed",
+    "pegRating": "低估",
+    "conclusion": "低估"
+  },
+  {
+    "id": "300390_2026-06-24",
+    "ticker": "300390",
+    "name": "天华新能",
+    "date": "2026-06-24",
+    "status": "completed",
+    "pegRating": "合理",
+    "conclusion": "** 公司经历业绩阵痛后迎来拐点，当前估值并未过度反应其未来潜在增速，但其周期性底色要求投资者对锂价拐点保持高度警惕。"
+  },
+  {
+    "id": "601888_2026-06-24",
+    "ticker": "601888",
+    "name": "中国中免",
+    "date": "2026-06-24",
+    "status": "completed",
+    "pegRating": "低估",
+    "conclusion": "低估"
+  },
+  {
+    "id": "002475_2026-06-24",
+    "ticker": "002475",
+    "name": "立讯精密",
+    "date": "2026-06-24",
+    "status": "completed",
+    "pegRating": "合理",
+    "conclusion": "合理"
+  },
+  {
+    "id": "002837_2026-06-24",
+    "ticker": "002837",
+    "name": "英维克",
+    "date": "2026-06-24",
+    "status": "completed",
+    "pegRating": "高估",
+    "conclusion": "高估"
+  },
+  {
+    "id": "002759_2026-06-25",
+    "ticker": "002759",
+    "name": "天际股份",
+    "date": "2026-06-25",
+    "status": "completed",
+    "conclusion": "合理",
+    "pegRating": "合理"
+  },
+  {
+    "id": "600519_2026-06-27",
+    "ticker": "600519",
+    "name": "XD贵州茅",
+    "date": "2026-06-27",
+    "status": "completed",
+    "pegRating": "高估",
+    "conclusion": "高估"
+  },
+  {
+    "id": "002580_2026-07-02",
+    "ticker": "002580",
+    "name": "圣阳股份",
+    "date": "2026-07-02",
+    "status": "completed",
+    "pegRating": "高估",
+    "conclusion": "高估"
+  },
+  {
+    "id": "002759_2026-07-08",
+    "ticker": "002759",
+    "name": "天际股份",
+    "date": "2026-07-08",
+    "status": "completed",
+    "conclusion": "分析完成"
+  },
+  {
+    "id": "002876_2026-07-08",
+    "ticker": "002876",
+    "name": "三利谱",
+    "date": "2026-07-08",
+    "status": "completed",
+    "pegRating": "合理",
+    "conclusion": "合理"
+  },
+  {
+    "id": "300390_2026-07-08",
+    "ticker": "300390",
+    "name": "天华新能",
+    "date": "2026-07-08",
+    "status": "completed",
+    "pegRating": "低估",
+    "conclusion": "低估"
+  },
+  {
+    "id": "600519_2026-07-10",
+    "ticker": "600519",
+    "name": "贵州茅台",
+    "date": "2026-07-10",
+    "status": "completed",
+    "pegRating": "高估",
+    "conclusion": "高估"
+  },
+  {
+    "id": "600519_2026-07-11",
+    "ticker": "600519",
+    "name": "贵州茅台",
+    "date": "2026-07-11",
+    "status": "analyzing"
+  },
+  {
+    "id": "000001_2026-07-11",
+    "ticker": "000001",
+    "name": "平安银行",
+    "date": "2026-07-11",
+    "status": "analyzing"
+  }
+]

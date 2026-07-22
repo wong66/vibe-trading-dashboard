@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from src.shadow_account.models import ShadowProfile, ShadowRule
+from agent.src.shadow_account.models import ShadowProfile, ShadowRule
 
 
 def _root() -> Path:

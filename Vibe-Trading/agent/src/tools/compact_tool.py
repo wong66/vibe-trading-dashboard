@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from src.agent.tools import BaseTool
+from agent.src.agent.tools import BaseTool
 
 
 class CompactTool(BaseTool):

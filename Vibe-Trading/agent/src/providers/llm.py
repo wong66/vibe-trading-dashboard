@@ -429,7 +429,7 @@ def build_llm(*, model_name: Optional[str] = None, callbacks: Any = None) -> Any
     temperature = float(os.getenv("LANGCHAIN_TEMPERATURE", "0.0"))
     provider = os.getenv("LANGCHAIN_PROVIDER", "openai").lower()
     if provider in {"openai-codex", "openai_codex"}:
-        from src.providers.openai_codex import OpenAICodexLLM
+        from agent.src.providers.openai_codex import OpenAICodexLLM
 
         effort = os.getenv("LANGCHAIN_REASONING_EFFORT", "").strip().lower()
         return OpenAICodexLLM(

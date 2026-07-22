@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from src.agent.tools import BaseTool
-from src.security.scanner import with_security_warnings
+from agent.src.agent.tools import BaseTool
+from agent.src.security.scanner import with_security_warnings
 
 
 class WebSearchTool(BaseTool):

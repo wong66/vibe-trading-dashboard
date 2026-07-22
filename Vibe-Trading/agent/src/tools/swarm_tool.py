@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from src.agent.tools import BaseTool
+from agent.src.agent.tools import BaseTool
 
 logger = logging.getLogger(__name__)
 
@@ -642,9 +642,9 @@ class SwarmTool(BaseTool):
             prompt[:100],
         )
 
-        from src.config import load_swarm_agent_config
-        from src.swarm.runtime import SwarmRuntime
-        from src.swarm.store import SwarmStore
+        from agent.src.config import load_swarm_agent_config
+        from agent.src.swarm.runtime import SwarmRuntime
+        from agent.src.swarm.store import SwarmStore
 
         swarm_base_dir = Path(__file__).resolve().parents[2] / ".swarm" / "runs"
         swarm_base_dir.mkdir(parents=True, exist_ok=True)
@@ -766,7 +766,7 @@ def _format_result(
     Returns:
         JSON string with run status, report, task summaries, and token usage.
     """
-    from src.swarm.serialization import run_level_error, serialize_task
+    from agent.src.swarm.serialization import run_level_error, serialize_task
 
     task_summaries = [serialize_task(task) for task in run.tasks]
 

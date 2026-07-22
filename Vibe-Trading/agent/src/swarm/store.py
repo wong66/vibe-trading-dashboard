@@ -18,8 +18,8 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from src.swarm.models import SwarmEvent, SwarmRun
-from src.tools.redaction import redact_internal_paths
+from agent.src.swarm.models import SwarmEvent, SwarmRun
+from agent.src.tools.redaction import redact_internal_paths
 
 
 def _parse_iso(value: str | None) -> datetime | None:
@@ -278,7 +278,7 @@ class SwarmStore:
         :meth:`pydantic.BaseModel.model_copy`. Falls back to ``run`` unchanged
         when no task files exist.
         """
-        from src.swarm.task_store import TaskStore
+        from agent.src.swarm.task_store import TaskStore
 
         tasks_dir = self.run_dir(run.id) / "tasks"
         if not tasks_dir.exists():
@@ -336,7 +336,7 @@ class SwarmStore:
         Returns False for any non-running run so callers don't accidentally
         flag completed/cancelled runs.
         """
-        from src.swarm.models import RunStatus
+        from agent.src.swarm.models import RunStatus
 
         if run.status != RunStatus.running:
             return False
@@ -377,7 +377,7 @@ class SwarmStore:
         Returns:
             Reconciled ``SwarmRun`` (a new instance — original is not mutated).
         """
-        from src.swarm.models import RunStatus, TaskStatus
+        from agent.src.swarm.models import RunStatus, TaskStatus
 
         hydrated = self.hydrate_run(run)
         now = datetime.now(timezone.utc)
@@ -410,7 +410,7 @@ class SwarmStore:
 
     def _recover_terminal(self, run: SwarmRun, *, now: datetime) -> SwarmRun:
         """Pure: derive a terminal SwarmRun from already-terminal tasks."""
-        from src.swarm.models import RunStatus, TaskStatus
+        from agent.src.swarm.models import RunStatus, TaskStatus
 
         statuses = {t.status for t in run.tasks}
         if statuses <= {TaskStatus.completed}:
@@ -439,7 +439,7 @@ class SwarmStore:
 
     def _reap_stale(self, run: SwarmRun, *, now: datetime) -> SwarmRun:
         """Pure: mark non-terminal tasks failed; derive run status from tasks."""
-        from src.swarm.models import RunStatus, TaskStatus
+        from agent.src.swarm.models import RunStatus, TaskStatus
 
         terminal_task = {TaskStatus.completed, TaskStatus.failed, TaskStatus.cancelled}
         last_event_at = _last_event_timestamp(self.run_dir(run.id) / "events.jsonl")
@@ -484,7 +484,7 @@ class SwarmStore:
         the disk update still runs (so duplicate readers converge) but no
         second event is appended.
         """
-        from src.swarm.task_store import TaskStore
+        from agent.src.swarm.task_store import TaskStore
 
         try:
             task_store = TaskStore(self.run_dir(run.id))
@@ -521,7 +521,7 @@ class SwarmStore:
         terminal status — useful for log/telemetry and for the explicit
         ``reap_stale_runs`` MCP tool.
         """
-        from src.swarm.models import RunStatus
+        from agent.src.swarm.models import RunStatus
 
         if not self.base_dir.exists():
             return []

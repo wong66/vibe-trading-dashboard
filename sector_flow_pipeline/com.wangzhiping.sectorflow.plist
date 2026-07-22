@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.wangzhiping.sectorflow</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/anaconda3/bin/python3</string>
+        <string>/Users/wangzhiping/Claude/大A投研看板/sector_flow_pipeline/collector.py</string>
+        <string>--once</string>
+    </array>
+
+    <!-- 每 15 分钟跑一次; collector 内部已做交易时段守卫, 非交易时段自动跳过 -->
+    <key>StartInterval</key>
+    <integer>900</integer>
+
+    <key>RunAtLoad</key>
+    <boolean>false</boolean>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/wangzhiping/Claude/大A投研看板/sector_flow_pipeline</string>
+
+    <key>StandardOutPath</key>
+    <string>/Users/wangzhiping/Claude/大A投研看板/sector_flow_pipeline/logs/collector.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/wangzhiping/Claude/大A投研看板/sector_flow_pipeline/logs/collector.err.log</string>
+</dict>
+</plist>

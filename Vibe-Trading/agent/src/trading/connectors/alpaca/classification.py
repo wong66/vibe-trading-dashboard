@@ -7,7 +7,7 @@ unlisted and not a known read is treated as WRITE (fail-closed) by the gate.
 
 from __future__ import annotations
 
-from src.live.classification import ToolClass
+from agent.src.live.classification import ToolClass
 
 #: Alpaca SDK operation read/write catalog.
 ALPACA_TOOL_CLASS: dict[str, ToolClass] = {

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.trading.types import TradingProfile
+from agent.src.trading.types import TradingProfile
 
 ROBINHOOD_PROFILES: tuple[TradingProfile, ...] = (
     TradingProfile(

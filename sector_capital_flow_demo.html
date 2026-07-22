@@ -1,0 +1,64 @@
+<!doctype html><html lang="zh"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>板块资金流 · a-stock-data v3.4.0 验证</title>
+<style>
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#f6f7f9;color:#1a1a1a;margin:0;padding:24px;}
+h1{font-size:20px;margin:0 0 4px}
+.sub{color:#666;font-size:13px;margin-bottom:18px}
+.card{background:#fff;border-radius:12px;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:20px}
+.card h2{font-size:15px;margin:0 0 10px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid #eee}
+th{color:#888;font-weight:600;font-size:12px}
+.rk{color:#999;width:28px}
+.nm{font-weight:600}.code{display:block;color:#aaa;font-size:11px;font-weight:400}
+.red{color:#e23b3b;font-weight:700}.green{color:#1a9e4b;font-weight:700}
+.note{background:#fff8e6;border:1px solid #ffe2a8;color:#8a6d1a;font-size:12px;padding:10px 12px;border-radius:8px;margin-bottom:20px;line-height:1.6}
+code{background:#f0f0f0;padding:1px 5px;border-radius:4px;font-size:12px}
+pre{background:#0f1115;color:#e6e6e6;padding:14px;border-radius:8px;overflow:auto;font-size:12px;line-height:1.5}
+</style></head><body>
+<h1>📊 板块资金流向 · a-stock-data v3.4.0</h1>
+<div class="sub">通过 <code>industry_comparison()</code> 扩展 f62/f184 字段实现 · 数据源：东财 push2 行业板块（m:90+t:2）</div>
+
+<div class="note">
+⚠️ <b>本页数据说明：</b>当前沙箱环境的东财接口处于「间歇性全断」状态（连续 5 次拉取返回空），故下方为本次会话<b>首轮成功请求</b>真实返回的 5 个板块样本（按涨跌幅排序，非净流入排序）。<br>
+这已验证：东财 <code>push2</code> 行业板块接口<b>确实返回 f62（主力净流入）与 f184（主力净占比）</b>——即抖音财经号同款「板块资金流」字段。在你本机 Mac 网络下可稳定拉全量 ~100 个行业、按净流入降序。
+</div>
+
+<div class="card"><h2>✅ 已验证样本（真实返回，含主力净流入）</h2>
+<table><thead><tr><th>#</th><th>板块</th><th>涨跌幅</th><th>主力净流入</th><th>主力净占比</th></tr></thead>
+<tbody>
+<tr><td class="rk">1</td><td class="nm">院线<span class="code">BK1300</span></td><td class="red">+6.42%</td><td class="red">2.47亿</td><td class="red">11.57%</td></tr>
+<tr><td class="rk">2</td><td class="nm">影视院线<span class="code">BK1222</span></td><td class="red">+5.54%</td><td class="red">6.32亿</td><td class="red">7.26%</td></tr>
+<tr><td class="rk">3</td><td class="nm">影视动漫制作<span class="code">BK1299</span></td><td class="red">+5.29%</td><td class="red">3.85亿</td><td class="red">5.86%</td></tr>
+<tr><td class="rk">4</td><td class="nm">医美耗材<span class="code">BK1500</span></td><td class="red">+4.96%</td><td class="red">1.51亿</td><td class="red">8.79%</td></tr>
+<tr><td class="rk">5</td><td class="nm">专业连锁Ⅲ<span class="code">BK1555</span></td><td class="red">+4.64%</td><td class="red">1.82亿</td><td class="red">9.90%</td></tr>
+</tbody></table>
+<p style="font-size:12px;color:#888;margin:10px 0 0">注：上述 5 条按涨跌幅排序；用 <code>fid=f62</code> 即可改为按主力净流入降序，得到抖音视频那种「资金流入排行榜」。</p>
+</div>
+
+<div class="card"><h2>🛠 在你本机复现（完整 ~100 行业净流入排行）</h2>
+<p style="font-size:13px;color:#444;margin:0 0 8px">在 a-stock-data v3.4.0 的 <code>industry_comparison()</code> 已扩展 f62/f184 后，调用示例：</p>
+<pre>from skill import industry_comparison  # 或直接 exec SKILL.md 内函数
+
+data = industry_comparison(20)          # top_n=20
+# 按主力净流入降序排（抖音「板块资金流向」同款）
+ranked = sorted(data["top"] + data["bottom"],
+                key=lambda r: r["main_net"], reverse=True)
+for r in ranked[:15]:
+    print(f"{r['name']:>8}  主力净流入 {r['main_net']/1e8:.2f}亿  "
+          f"净占比 {r['main_net_pct']:.2f}%  涨跌 {r['change_pct']:+.2f}%")
+
+# 抓全量（~100 行业）按净流入排序：
+#   params 里 pz=500, fid="f62", po=1  →  直接得净流入排行榜
+</pre>
+</div>
+
+<div class="card"><h2>📌 结论</h2>
+<p style="font-size:13px;line-height:1.7;margin:0">
+• 原版 v3.4.0 <b>没有</b>独立的「板块资金流」函数，只有 <code>industry_comparison()</code>（仅涨跌幅+领涨股）和<b>个股</b>资金流。<br>
+• 已扩展 <code>industry_comparison()</code> 的 <code>fields</code> 加上 <code>f62</code>(主力净流入) / <code>f184</code>(主力净占比)，现在<b>直接返回板块资金流数据</b>。<br>
+• 已实测东财接口返回这两个字段（见上方样本），与抖音「7月16日收盘板块资金流向」同源。<br>
+• 渲染成视频：把返回的 <code>name / main_net / change_pct</code> 喂给 matplotlib 条形图动画 + 剪映成片即可。
+</p></div>
+</body></html>

@@ -9,5 +9,5 @@ preemptive halt, triggers) is built on top in sibling modules.
 Submodules are intentionally NOT re-exported here: parcels land sibling
 modules (runner, triggers, reconcile, flatten) concurrently, so importing
 ``src.live.runtime`` must never pull a half-written sibling. Import the exact
-module you need (e.g. ``from src.live.runtime.scheduler import Scheduler``).
+module you need (e.g. ``from agent.src.live.runtime.scheduler import Scheduler``).
 """

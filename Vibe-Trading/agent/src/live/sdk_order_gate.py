@@ -27,9 +27,9 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from src.live.audit import LiveActionEvent, write_live_action
-from src.live.daily_count import increment_daily_count, read_daily_count
-from src.live.enforcement import (
+from agent.src.live.audit import LiveActionEvent, write_live_action
+from agent.src.live.daily_count import increment_daily_count, read_daily_count
+from agent.src.live.enforcement import (
     BREACH_KIND_INSTRUMENT,
     BREACH_KIND_UNIVERSE,
     OrderIntent,
@@ -37,9 +37,9 @@ from src.live.enforcement import (
     instrument_asset_class,
     last_price_usd,
 )
-from src.live.halt import halt_flag_set
-from src.live.mandate.model import MANDATE_SCHEMA_VERSION, Mandate
-from src.live.mandate.store import load_mandate
+from agent.src.live.halt import halt_flag_set
+from agent.src.live.mandate.model import MANDATE_SCHEMA_VERSION, Mandate
+from agent.src.live.mandate.store import load_mandate
 
 logger = logging.getLogger(__name__)
 

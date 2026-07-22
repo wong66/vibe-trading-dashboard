@@ -14,15 +14,15 @@ from typing import Any, Dict, Optional
 # Dedicated thread pool limited to four concurrent agents to avoid exhausting the default executor.
 _AGENT_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=4, thread_name_prefix="agent")
 
-from src.session.events import EventBus
-from src.session.models import (
+from agent.src.session.events import EventBus
+from agent.src.session.models import (
     Attempt,
     AttemptStatus,
     Message,
     Session,
 )
-from src.session.search import get_shared_index
-from src.session.store import SessionStore
+from agent.src.session.search import get_shared_index
+from agent.src.session.store import SessionStore
 
 
 class SessionService:
@@ -213,11 +213,11 @@ class SessionService:
         Returns:
             Result dictionary containing status, run_dir, run_id, metrics, and related fields.
         """
-        from src.tools import build_registry
-        from src.providers.chat import ChatLLM
-        from src.agent.loop import AgentLoop
-        from src.memory.persistent import PersistentMemory
-        from src.config.loader import load_runtime_agent_config, sanitize_session_overrides
+        from agent.src.tools import build_registry
+        from agent.src.providers.chat import ChatLLM
+        from agent.src.agent.loop import AgentLoop
+        from agent.src.memory.persistent import PersistentMemory
+        from agent.src.config.loader import load_runtime_agent_config, sanitize_session_overrides
 
         llm = ChatLLM()
         pm = PersistentMemory()

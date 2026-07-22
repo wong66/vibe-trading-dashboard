@@ -15,7 +15,7 @@ the selected profile and fails closed if a configured ``acc_id`` does not match,
 so a live account can never be driven under a paper profile by mistake.
 """
 
-from src.trading.connectors.futu.sdk import (
+from agent.src.trading.connectors.futu.sdk import (
     FutuConfig,
     FutuConfigError,
     FutuDependencyError,

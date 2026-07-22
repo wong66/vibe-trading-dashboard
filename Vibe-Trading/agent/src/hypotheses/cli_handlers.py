@@ -31,7 +31,7 @@ except Exception:  # pragma: no cover — rich is a project dep, fallback only
     Table = None  # type: ignore[assignment]
     Panel = None  # type: ignore[assignment]
 
-from src.hypotheses.registry import (
+from agent.src.hypotheses.registry import (
     HYPOTHESIS_STATUSES,
     Hypothesis,
     HypothesisRegistry,

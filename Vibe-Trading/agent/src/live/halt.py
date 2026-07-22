@@ -33,7 +33,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from src.live.paths import broker_dir, live_root
+from agent.src.live.paths import broker_dir, live_root
 
 logger = logging.getLogger(__name__)
 

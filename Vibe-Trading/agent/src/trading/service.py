@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.trading.profiles import list_profiles, profile_by_id
-from src.trading.types import TradingProfile
+from agent.src.trading.profiles import list_profiles, profile_by_id
+from agent.src.trading.types import TradingProfile
 
 RUNNER_CAPABILITY = "runner.manage.requires_mandate"
 
@@ -39,7 +39,7 @@ def check_connection(profile_id: str | None = None, **overrides: Any) -> dict[st
     """Check a connector profile without mutating broker state."""
     profile = profile_by_id(profile_id)
     if profile.transport == "local_tws":
-        from src.trading.connectors.ibkr.local import check_local_status
+        from agent.src.trading.connectors.ibkr.local import check_local_status
 
         cfg = _ibkr_config(profile, overrides)
         report = check_local_status(cfg)
@@ -65,7 +65,7 @@ def get_account(profile_id: str | None = None, **overrides: Any) -> dict[str, An
     """Read account summary for a connector profile."""
     profile = profile_by_id(profile_id)
     if profile.transport == "local_tws":
-        from src.trading.connectors.ibkr.local import get_account_snapshot
+        from agent.src.trading.connectors.ibkr.local import get_account_snapshot
 
         return _with_profile(profile, get_account_snapshot(_ibkr_config(profile, overrides)))
     if profile.transport == "broker_sdk":
@@ -78,7 +78,7 @@ def get_positions(profile_id: str | None = None, **overrides: Any) -> dict[str, 
     """Read positions for a connector profile."""
     profile = profile_by_id(profile_id)
     if profile.transport == "local_tws":
-        from src.trading.connectors.ibkr.local import get_positions as _get_positions
+        from agent.src.trading.connectors.ibkr.local import get_positions as _get_positions
 
         return _with_profile(profile, _get_positions(_ibkr_config(profile, overrides)))
     if profile.transport == "broker_sdk":
@@ -96,7 +96,7 @@ def get_open_orders(
     """Read open orders for a connector profile."""
     profile = profile_by_id(profile_id)
     if profile.transport == "local_tws":
-        from src.trading.connectors.ibkr.local import get_open_orders as _get_open_orders
+        from agent.src.trading.connectors.ibkr.local import get_open_orders as _get_open_orders
 
         return _with_profile(
             profile,
@@ -123,7 +123,7 @@ def get_quote(
     """Read a quote for a connector profile."""
     profile = profile_by_id(profile_id)
     if profile.transport == "local_tws":
-        from src.trading.connectors.ibkr.local import get_quote as _get_quote
+        from agent.src.trading.connectors.ibkr.local import get_quote as _get_quote
 
         return _with_profile(
             profile,
@@ -165,7 +165,7 @@ def get_history(
     """
     profile = profile_by_id(profile_id)
     if profile.transport == "local_tws":
-        from src.trading.connectors.ibkr.local import get_historical_bars
+        from agent.src.trading.connectors.ibkr.local import get_historical_bars
 
         return _with_profile(
             profile,
@@ -217,7 +217,7 @@ def _order_classification(connector: str, symbol: str):
     only ever DENIES (never silently widens) when the user's mandate permits a
     non-US class, so the unknown case is fail-safe.
     """
-    from src.live.mandate.model import AssetClass, InstrumentType
+    from agent.src.live.mandate.model import AssetClass, InstrumentType
 
     instrument_name, asset_name = _CONNECTOR_INSTRUMENT.get(connector, ("equity", None))
     instrument = InstrumentType(instrument_name)
@@ -275,8 +275,8 @@ def place_order(
         return _with_profile(profile, module.place_order(config, **place_kwargs))
 
     # Live: pre-trade mandate gate.
-    from src.live.enforcement import OrderIntent
-    from src.live.sdk_order_gate import execute_live_order
+    from agent.src.live.enforcement import OrderIntent
+    from agent.src.live.sdk_order_gate import execute_live_order
 
     instrument_type, asset_class = _order_classification(profile.connector, symbol)
     intent = OrderIntent(
@@ -327,7 +327,7 @@ def cancel_order(
 def _audit_live_cancel(profile, order_id, symbol, result, session_id) -> None:
     """Write a live-action audit record for a live order cancellation (best-effort)."""
     try:
-        from src.live.audit import LiveActionEvent, write_live_action
+        from agent.src.live.audit import LiveActionEvent, write_live_action
 
         ok = isinstance(result, dict) and str(result.get("status", "")).lower() == "ok"
         event = LiveActionEvent(
@@ -395,7 +395,7 @@ def connector_profile_id_for_broker(broker: str) -> str:
 def runner_tool_name(connector: str, operation: str) -> str | None:
     """Map a runner operation to a connector-specific remote MCP tool name."""
     if connector == "robinhood":
-        from src.trading.connectors.robinhood.mcp import runner_tool_name as _runner_tool_name
+        from agent.src.trading.connectors.robinhood.mcp import runner_tool_name as _runner_tool_name
 
         return _runner_tool_name(operation)
     return None
@@ -413,7 +413,7 @@ def _with_profile(profile: TradingProfile, payload: dict[str, Any]) -> dict[str,
 
 def _ibkr_config(profile: TradingProfile, overrides: dict[str, Any]):
     """Build an IBKR local config from a trading profile and call overrides."""
-    from src.trading.connectors.ibkr.local import IBKRLocalConfig, config_path, load_config
+    from agent.src.trading.connectors.ibkr.local import IBKRLocalConfig, config_path, load_config
 
     default_cfg = IBKRLocalConfig.from_mapping(profile.config)
     base = load_config()
@@ -431,8 +431,8 @@ def _ibkr_config(profile: TradingProfile, overrides: dict[str, Any]):
 
 def _remote_status(profile: TradingProfile) -> dict[str, Any]:
     """Return local authorization/config status for a remote MCP profile."""
-    from src.config.loader import load_agent_config
-    from src.live.registry import has_cached_oauth_token
+    from agent.src.config.loader import load_agent_config
+    from agent.src.live.registry import has_cached_oauth_token
 
     server_name = str(profile.config.get("server") or profile.connector)
     server = (load_agent_config().mcp_servers or {}).get(server_name)
@@ -456,9 +456,9 @@ def _remote_status(profile: TradingProfile) -> dict[str, Any]:
 
 def _call_remote(profile: TradingProfile, operation: str, arguments: dict[str, Any]) -> dict[str, Any]:
     """Call a known read operation on a remote MCP connector profile."""
-    from src.config.loader import load_agent_config
-    from src.live.registry import has_cached_oauth_token
-    from src.tools.mcp import MCPServerAdapter
+    from agent.src.config.loader import load_agent_config
+    from agent.src.live.registry import has_cached_oauth_token
+    from agent.src.tools.mcp import MCPServerAdapter
 
     remote_name = _remote_tool_name(profile.connector, operation)
     if remote_name is None:
@@ -521,7 +521,7 @@ def _call_remote(profile: TradingProfile, operation: str, arguments: dict[str, A
 def _remote_tool_name(connector: str, operation: str) -> str | None:
     """Map generic read operations to current remote MCP tool names."""
     if connector == "robinhood":
-        from src.trading.connectors.robinhood.mcp import remote_tool_name
+        from agent.src.trading.connectors.robinhood.mcp import remote_tool_name
 
         return remote_tool_name(operation)
     return None
@@ -530,7 +530,7 @@ def _remote_tool_name(connector: str, operation: str) -> str | None:
 def _remote_arguments(connector: str, operation: str, arguments: dict[str, Any]) -> dict[str, Any]:
     """Normalize generic arguments for a remote MCP operation."""
     if connector == "robinhood":
-        from src.trading.connectors.robinhood.mcp import remote_arguments
+        from agent.src.trading.connectors.robinhood.mcp import remote_arguments
 
         return remote_arguments(operation, arguments)
     return {}

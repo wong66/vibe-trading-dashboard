@@ -52,8 +52,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 
-from src.live.mandate.store import load_mandate
-from src.live.paths import broker_dir
+from agent.src.live.mandate.store import load_mandate
+from agent.src.live.paths import broker_dir
 
 logger = logging.getLogger(__name__)
 

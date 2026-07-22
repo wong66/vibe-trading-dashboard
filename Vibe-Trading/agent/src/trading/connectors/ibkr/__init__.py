@@ -1,6 +1,6 @@
 """Interactive Brokers connector package."""
 
-from src.trading.connectors.ibkr.local import (
+from agent.src.trading.connectors.ibkr.local import (
     DEFAULT_ENDPOINTS,
     IBKRLocalConfig,
     check_local_status,

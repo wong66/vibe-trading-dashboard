@@ -35,8 +35,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
-from src.live.mandate.model import MANDATE_SCHEMA_VERSION
-from src.live.paths import broker_dir
+from agent.src.live.mandate.model import MANDATE_SCHEMA_VERSION
+from agent.src.live.paths import broker_dir
 
 logger = logging.getLogger(__name__)
 

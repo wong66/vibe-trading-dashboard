@@ -7,12 +7,12 @@ import logging
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from src.agent.memory import WorkspaceMemory
-from src.agent.skills import SkillsLoader
-from src.agent.tools import ToolRegistry
+from agent.src.agent.memory import WorkspaceMemory
+from agent.src.agent.skills import SkillsLoader
+from agent.src.agent.tools import ToolRegistry
 
 if TYPE_CHECKING:
-    from src.memory.persistent import PersistentMemory
+    from agent.src.memory.persistent import PersistentMemory
 
 logger = logging.getLogger(__name__)
 

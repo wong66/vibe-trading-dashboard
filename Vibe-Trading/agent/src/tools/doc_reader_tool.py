@@ -19,10 +19,10 @@ import json
 from pathlib import Path
 from typing import Any, Callable
 
-from src.agent.progress import emit_progress
-from src.agent.tools import BaseTool
-from src.security.scanner import with_security_warnings
-from src.tools.path_utils import safe_document_path
+from agent.src.agent.progress import emit_progress
+from agent.src.agent.tools import BaseTool
+from agent.src.security.scanner import with_security_warnings
+from agent.src.tools.path_utils import safe_document_path
 
 _MAX_CHARS = 15000
 _MIN_TEXT_PER_PAGE = 50

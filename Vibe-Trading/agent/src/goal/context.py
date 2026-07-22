@@ -170,7 +170,7 @@ def get_current_goal_context(session_id: str) -> tuple[str, str | None]:
     """
     if not session_id.strip():
         return "", None
-    from src.goal.store import GoalStore
+    from agent.src.goal.store import GoalStore
 
     snapshot = GoalStore().get_current_snapshot(session_id)
     if snapshot is None:

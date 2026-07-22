@@ -20,14 +20,14 @@ import math
 import time
 from typing import Any, Callable, Iterable
 
-from src.factors.factor_analysis_core import compute_ic_series
-from src.factors.registry import (
+from agent.src.factors.factor_analysis_core import compute_ic_series
+from agent.src.factors.registry import (
     Registry,
     RegistryError,
     SkipAlpha,
     get_default_registry,
 )
-from src.tools.alpha_bench_tool import _compute_forward_returns, _load_universe_panel
+from agent.src.tools.alpha_bench_tool import _compute_forward_returns, _load_universe_panel
 
 logger = logging.getLogger(__name__)
 

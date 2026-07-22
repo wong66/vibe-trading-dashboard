@@ -242,7 +242,7 @@ def _make_progress_cb(
 
 def _run_bench_blocking(job_id: str, zoo: str, universe: str, period: str, top: int) -> None:
     """Synchronous bench worker (called via ``asyncio.to_thread``)."""
-    from src.factors.bench_runner import run_bench  # local import: heavy deps
+    from agent.src.factors.bench_runner import run_bench  # local import: heavy deps
 
     with _JOBS_LOCK:
         job = ALPHA_BENCH_JOBS.get(job_id)
@@ -296,7 +296,7 @@ def _run_compare_blocking(
     Unlike bench, the comparison's product IS the per-alpha ranking, so the full
     (already-slim) envelope is stored as the job result.
     """
-    from src.factors.compare_runner import compare_alphas  # local import: heavy deps
+    from agent.src.factors.compare_runner import compare_alphas  # local import: heavy deps
 
     with _JOBS_LOCK:
         job = ALPHA_COMPARE_JOBS.get(job_id)
@@ -404,7 +404,7 @@ def register_alpha_routes(
                 detail=f"unknown universe {universe!r}; expected one of {sorted(_VALID_UNIVERSES)}",
             )
 
-        from src.factors.registry import get_default_registry
+        from agent.src.factors.registry import get_default_registry
 
         registry = get_default_registry()
         try:
@@ -452,7 +452,7 @@ def register_alpha_routes(
         if not _ALPHA_ID_RE.fullmatch(alpha_id or ""):
             raise HTTPException(status_code=400, detail="invalid alpha_id")
 
-        from src.factors.registry import RegistryError, get_default_registry
+        from agent.src.factors.registry import RegistryError, get_default_registry
 
         registry = get_default_registry()
         try:
@@ -496,7 +496,7 @@ def register_alpha_routes(
         """Queue a background bench job and return a job_id."""
         # Cheap period parse pre-check so we 400 here instead of letting the
         # worker fail asynchronously.
-        from src.tools.alpha_bench_tool import _parse_period
+        from agent.src.tools.alpha_bench_tool import _parse_period
 
         try:
             _parse_period(payload.period)
@@ -586,7 +586,7 @@ def register_alpha_routes(
     )
     async def kick_off_compare(payload: CompareRequest) -> dict[str, Any]:
         """Queue a background head-to-head comparison and return a job_id."""
-        from src.tools.alpha_bench_tool import _parse_period
+        from agent.src.tools.alpha_bench_tool import _parse_period
 
         try:
             _parse_period(payload.period)

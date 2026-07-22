@@ -38,8 +38,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Literal, Protocol
 
-from src.live.paths import live_root
-from src.tools.redaction import redact_payload
+from agent.src.live.paths import live_root
+from agent.src.tools.redaction import redact_payload
 
 logger = logging.getLogger(__name__)
 

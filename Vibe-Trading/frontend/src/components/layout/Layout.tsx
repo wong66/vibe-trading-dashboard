@@ -1,6 +1,6 @@
 ﻿import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation, useSearchParams } from "react-router-dom";
-import { BarChart3, Bot, Moon, Sun, Plus, Trash2, Pencil, MessageSquare, ChevronsLeft, ChevronsRight, Settings, Layers, Loader2, LayoutDashboard, Cpu, LineChart, Activity, Crosshair, Target } from "lucide-react";
+import { BarChart3, Bot, Moon, Sun, Plus, Trash2, Pencil, MessageSquare, ChevronsLeft, ChevronsRight, Settings, Layers, Loader2, LayoutDashboard, Cpu, LineChart, Activity, Crosshair, Target, Newspaper, TrendingUp, Brain, CalendarClock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDarkMode } from "@/hooks/useDarkMode";
 import { api, type SessionItem } from "@/lib/api";
@@ -17,7 +17,13 @@ const NAV = [
   { to: "/ai-compute", icon: Cpu, label: "AI算力" },
   { to: "/stock-board", icon: LineChart, label: "个股看板" },
   { to: "/astock-peg", icon: Activity, label: "PEG估值" },
+  { to: "/daily-pick", icon: CalendarClock, label: "每日选股分析" },
+  { to: "/smart-analysis", icon: Brain, label: "股票智能分析" },
+  // ── A股量化决策（分组） ──
+  { to: "/aquant/review", icon: TrendingUp, label: "A股量化决策" },
+  // ── ──
   { to: "/stock-pick", icon: Crosshair, label: "选股" },
+  { to: "/investment-news", icon: Newspaper, label: "投资新闻" },
   { to: "/", icon: BarChart3, label: "首页" },
   { to: "/agent", icon: Bot, label: "智能体" },
   { to: "/alpha-zoo", icon: Layers, label: "因子库" },
@@ -80,7 +86,7 @@ export function Layout() {
       {/* Sidebar */}
       <aside className={cn(
         "border-r bg-card flex flex-col shrink-0 transition-all duration-200",
-        collapsed ? "w-12" : "w-64"
+        collapsed ? "w-12" : "w-52"
       )}>
         {/* Brand */}
         <div className={cn("border-b", collapsed ? "p-2 flex justify-center" : "p-4")}>

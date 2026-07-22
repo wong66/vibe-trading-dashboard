@@ -9,14 +9,14 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from src.agent.tools import BaseTool
-from src.trading.profiles import (
+from agent.src.agent.tools import BaseTool
+from agent.src.trading.profiles import (
     list_profiles,
     load_selected_profile_id,
     profile_by_id,
     save_selected_profile_id,
 )
-from src.trading.service import (
+from agent.src.trading.service import (
     cancel_order,
     check_connection,
     get_account,

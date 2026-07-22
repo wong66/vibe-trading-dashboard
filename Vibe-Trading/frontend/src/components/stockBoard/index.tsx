@@ -18,7 +18,7 @@ export function SectionHeader({
     <div className="flex items-center gap-2 mb-3">
       <Icon className="h-4 w-4 text-primary" />
       <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
-      {subtitle && <span className="text-[10px] text-muted-foreground/60 font-mono">{subtitle}</span>}
+      {subtitle && <span className="text-[11px] text-muted-foreground/80 font-bold">{subtitle}</span>}
     </div>
   );
 }
@@ -39,9 +39,9 @@ export function MetricCard({
     : "text-muted-foreground/60";
   return (
     <div className="px-3 py-2 rounded-md border bg-card/50">
-      <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wider">{label}</p>
+      <p className="text-[11px] text-muted-foreground font-bold tracking-wide">{label}</p>
       <p className={cn("text-base font-semibold tabular-nums mt-0.5", accentClass)}>{value}</p>
-      {sub && <p className={cn("text-[10px] mt-0.5 font-medium tabular-nums", subClass)}>{sub}</p>}
+      {sub && <p className={cn("text-[11px] mt-0.5 font-bold tabular-nums", subClass)}>{sub}</p>}
     </div>
   );
 }

@@ -401,11 +401,21 @@ export function PeTrendChart({
   height?: number;
 }) {
   const { ref, setOption } = useECharts();
+
+  // 智能Y轴范围预计算（放在 effect 外，避免闭包/dep 问题）
+  const _validPe = pe.filter((v): v is number => v != null);
+  const _peDataMax = _validPe.length > 0 ? Math.max(..._validPe) : 0;
+  const _peHighLine = peMean != null && peStd != null ? peMean + peStd : null;
+  const _peLowLine = peMean != null && peStd != null ? peMean - peStd : null;
+  const _peRefMax = _peHighLine ?? (peMean ?? 0);
+  const _yMaxPe = Math.max(_peDataMax, _peRefMax) * 1.15;
+  const _yMinPe = Math.min(0, _peLowLine ?? 0, ...(_validPe.length ? [Math.min(..._validPe)] : [0]));
+
   useEffect(() => {
     if (!setOption) return;
     const t = getChartTheme();
-    const highLine = peMean != null && peStd != null ? peMean + peStd : null;
-    const lowLine = peMean != null && peStd != null ? peMean - peStd : null;
+    const highLine = _peHighLine;
+    const lowLine = _peLowLine;
 
     const series: any[] = [
       { name: "扣非 PE (TTM)", type: "line", data: pe, smooth: true, symbol: "circle", symbolSize: 6, connectNulls: true,
@@ -428,32 +438,32 @@ export function PeTrendChart({
 
     setOption({
       backgroundColor: "transparent",
-      title: { text: "扣非 PE 历史趋势", left: "center", top: 2, textStyle: { color: t.textColor, fontSize: 12, fontWeight: "normal" } },
+      title: { text: "扣非 PE 历史趋势", left: "center", top: 2, subtext: periods.length ? `${periods[0]} ~ ${periods[periods.length - 1]}（周度）` : "", subtextStyle: { color: t.textColor, fontSize: 10, fontWeight: "bold" }, textStyle: { color: t.textColor, fontSize: 13, fontWeight: "bold" } },
       tooltip: {
         trigger: "axis",
         backgroundColor: t.tooltipBg,
         borderColor: t.tooltipBorder,
-        textStyle: { color: t.tooltipText, fontSize: 11 },
+        textStyle: { color: t.tooltipText, fontSize: 12, fontWeight: "bold" },
         formatter: (params: any[]) => {
           if (!Array.isArray(params) || !params.length) return "";
           const date = params[0].axisValue;
-          let lines = [`<div style="font-weight:600;margin-bottom:4px">${date}</div>`];
+          let lines = [`<div style="font-weight:700;margin-bottom:4px">${date}</div>`];
           for (const p of params) {
             const v = p.value;
             if (v == null) continue;
             const display = typeof v === "number" ? v.toFixed(2) : String(v);
-            lines.push(`<div style="display:flex;justify-content:space-between;gap:12px;font-size:11px"><span>${p.marker}${p.seriesName}</span><span style="font-weight:600">${display}</span></div>`);
+            lines.push(`<div style="display:flex;justify-content:space-between;gap:12px;font-size:12px;font-weight:600"><span>${p.marker}${p.seriesName}</span><span style="font-weight:700">${display}</span></div>`);
           }
           return lines.join("");
         },
       },
-      legend: { data: ["扣非 PE (TTM)", "高估线", "均值", "低估线"], textStyle: { color: t.textColor, fontSize: 10 }, top: 22, right: 4, itemWidth: 10, itemHeight: 8 },
+      legend: { data: ["扣非 PE (TTM)", "高估线", "均值", "低估线"], textStyle: { color: t.textColor, fontSize: 11, fontWeight: "bold" }, top: 22, right: 4, itemWidth: 10, itemHeight: 8 },
       grid: { left: 8, right: 8, top: 50, bottom: 28, containLabel: true },
-      xAxis: { type: "category", data: periods, axisLine: { lineStyle: { color: t.axisColor } }, axisLabel: { color: t.textColor, fontSize: 9, rotate: periods.length > 12 ? 30 : 0 } },
-      yAxis: { type: "value", name: "扣非 PE", nameTextStyle: { color: t.textColor, fontSize: 9 }, axisLabel: { color: t.textColor, fontSize: 9 }, splitLine: { lineStyle: { color: t.gridColor } } },
+      xAxis: { type: "category", data: periods, boundaryGap: false, axisLine: { lineStyle: { color: t.axisColor } }, axisLabel: { color: t.textColor, fontSize: 9, fontWeight: "bold", rotate: periods.length > 8 ? 30 : 0 } },
+      yAxis: { type: "value", name: "扣非 PE", nameTextStyle: { color: t.textColor, fontSize: 10, fontWeight: "bold" }, axisLabel: { color: t.textColor, fontSize: 10, fontWeight: "bold", formatter: (v: number) => Math.round(v).toString() }, splitLine: { lineStyle: { color: t.gridColor } }, min: _yMinPe, max: _yMaxPe },
       series,
     }, true);
-  }, [setOption, periods, pe, peMean, peStd]);
+  }, [setOption, periods, pe, peMean, peStd, _yMaxPe, _yMinPe]);
   return <div ref={ref} style={{ height }} />;
 }
 
@@ -468,11 +478,21 @@ export function PsTrendChart({
   height?: number;
 }) {
   const { ref, setOption } = useECharts();
+
+  // 智能Y轴范围预计算
+  const _validPs = ps.filter((v): v is number => v != null);
+  const _psDataMax = _validPs.length > 0 ? Math.max(..._validPs) : 0;
+  const _psHighLine = psMean != null && psStd != null ? psMean + psStd : null;
+  const _psLowLine = psMean != null && psStd != null ? psMean - psStd : null;
+  const _psRefMax = _psHighLine ?? (psMean ?? 0);
+  const _yMaxPs = Math.max(_psDataMax, _psRefMax) * 1.15;
+  const _yMinPs = Math.min(0, _psLowLine ?? 0, ...(_validPs.length ? [Math.min(..._validPs)] : [0]));
+
   useEffect(() => {
     if (!setOption) return;
     const t = getChartTheme();
-    const highLine = psMean != null && psStd != null ? psMean + psStd : null;
-    const lowLine = psMean != null && psStd != null ? psMean - psStd : null;
+    const highLine = _psHighLine;
+    const lowLine = _psLowLine;
 
     const series: any[] = [
       { name: "PS (TTM)", type: "line", data: ps, smooth: true, symbol: "circle", symbolSize: 6, connectNulls: true,
@@ -493,32 +513,32 @@ export function PsTrendChart({
 
     setOption({
       backgroundColor: "transparent",
-      title: { text: "PS 历史趋势", left: "center", top: 2, textStyle: { color: t.textColor, fontSize: 12, fontWeight: "normal" } },
+      title: { text: "PS 历史趋势", left: "center", top: 2, subtext: periods.length ? `${periods[0]} ~ ${periods[periods.length - 1]}（周度）` : "", subtextStyle: { color: t.textColor, fontSize: 10, fontWeight: "bold" }, textStyle: { color: t.textColor, fontSize: 13, fontWeight: "bold" } },
       tooltip: {
         trigger: "axis",
         backgroundColor: t.tooltipBg,
         borderColor: t.tooltipBorder,
-        textStyle: { color: t.tooltipText, fontSize: 11 },
+        textStyle: { color: t.tooltipText, fontSize: 12, fontWeight: "bold" },
         formatter: (params: any[]) => {
           if (!Array.isArray(params) || !params.length) return "";
           const date = params[0].axisValue;
-          let lines = [`<div style="font-weight:600;margin-bottom:4px">${date}</div>`];
+          let lines = [`<div style="font-weight:700;margin-bottom:4px">${date}</div>`];
           for (const p of params) {
             const v = p.value;
             if (v == null) continue;
             const display = typeof v === "number" ? v.toFixed(2) : String(v);
-            lines.push(`<div style="display:flex;justify-content:space-between;gap:12px;font-size:11px"><span>${p.marker}${p.seriesName}</span><span style="font-weight:600">${display}</span></div>`);
+            lines.push(`<div style="display:flex;justify-content:space-between;gap:12px;font-size:12px;font-weight:600"><span>${p.marker}${p.seriesName}</span><span style="font-weight:700">${display}</span></div>`);
           }
           return lines.join("");
         },
       },
-      legend: { data: ["PS (TTM)", "高估线", "均值", "低估线"], textStyle: { color: t.textColor, fontSize: 10 }, top: 22, right: 4, itemWidth: 10, itemHeight: 8 },
+      legend: { data: ["PS (TTM)", "高估线", "均值", "低估线"], textStyle: { color: t.textColor, fontSize: 11, fontWeight: "bold" }, top: 22, right: 4, itemWidth: 10, itemHeight: 8 },
       grid: { left: 8, right: 8, top: 50, bottom: 28, containLabel: true },
-      xAxis: { type: "category", data: periods, axisLine: { lineStyle: { color: t.axisColor } }, axisLabel: { color: t.textColor, fontSize: 9, rotate: periods.length > 12 ? 30 : 0 } },
-      yAxis: { type: "value", name: "PS", nameTextStyle: { color: t.textColor, fontSize: 9 }, axisLabel: { color: t.textColor, fontSize: 9 }, splitLine: { lineStyle: { color: t.gridColor } } },
+      xAxis: { type: "category", data: periods, boundaryGap: false, axisLine: { lineStyle: { color: t.axisColor } }, axisLabel: { color: t.textColor, fontSize: 9, fontWeight: "bold", rotate: periods.length > 8 ? 30 : 0 } },
+      yAxis: { type: "value", name: "PS", nameTextStyle: { color: t.textColor, fontSize: 10, fontWeight: "bold" }, axisLabel: { color: t.textColor, fontSize: 10, fontWeight: "bold", formatter: (v: number) => Math.round(v).toString() }, splitLine: { lineStyle: { color: t.gridColor } }, min: _yMinPs, max: _yMaxPs },
       series,
     }, true);
-  }, [setOption, periods, ps, psMean, psStd]);
+  }, [setOption, periods, ps, psMean, psStd, _yMaxPs, _yMinPs]);
   return <div ref={ref} style={{ height }} />;
 }
 
@@ -541,7 +561,7 @@ export function RevenueMcapChart({
         trigger: "axis",
         backgroundColor: t.tooltipBg,
         borderColor: t.tooltipBorder,
-        textStyle: { color: t.tooltipText, fontSize: 11 },
+        textStyle: { color: t.tooltipText, fontSize: 12, fontWeight: "bold" },
         formatter: (params: any[]) => {
           const lines: string[] = [];
           let header = "";
@@ -550,28 +570,22 @@ export function RevenueMcapChart({
             const v = Number(p.value);
             if (!v) continue;
             const formatted = v.toFixed(2) + " 亿";
-            lines.push(`<div style="display:flex;justify-content:space-between;gap:16px"><span>${p.marker} ${p.seriesName}</span><span style="font-weight:600">${formatted}</span></div>`);
+            lines.push(`<div style="display:flex;justify-content:space-between;gap:16px;font-weight:600"><span>${p.marker} ${p.seriesName}</span><span style="font-weight:700">${formatted}</span></div>`);
           }
           if (!lines.length) return "";
-          return `<div style="font-weight:600;margin-bottom:4px">${header}</div>` + lines.join("");
+          return `<div style="font-weight:700;margin-bottom:4px">${header}</div>` + lines.join("");
         },
       },
-      legend: { data: ["营业收入(亿) TTM", "市值(亿)"], textStyle: { color: t.textColor, fontSize: 10 }, top: 0, right: 4, itemWidth: 10, itemHeight: 8 },
+      legend: { data: ["营业收入(亿) TTM", "市值(亿)"], textStyle: { color: t.textColor, fontSize: 11, fontWeight: "bold" }, top: 0, right: 4, itemWidth: 10, itemHeight: 8 },
       grid: { left: 8, right: 8, top: 28, bottom: 24, containLabel: true },
       xAxis: {
         type: "category", data: dates,
         axisLine: { lineStyle: { color: t.axisColor } },
-        axisLabel: {
-          color: t.textColor, fontSize: 9, rotate: dates.length > 40 ? 30 : 0,
-          formatter: (val: string) => {
-            if (dates.length < 40) return val;
-            return val.slice(5, 7) === "01" ? val.slice(0, 7) : "";
-          },
-        },
+        axisLabel: { color: t.textColor, fontSize: 9, fontWeight: "bold", rotate: dates.length > 8 ? 30 : 0 },
       },
       yAxis: [
-        { type: "value", name: "营收(亿)", nameTextStyle: { color: t.infoColor, fontSize: 10 }, axisLabel: { color: t.textColor, fontSize: 9 }, splitLine: { lineStyle: { color: t.gridColor } } },
-        { type: "value", name: "市值(亿)", nameTextStyle: { color: t.warningColor, fontSize: 10 }, axisLabel: { color: t.textColor, fontSize: 9 }, splitLine: { show: false } },
+        { type: "value", name: "营收(亿)", nameTextStyle: { color: t.infoColor, fontSize: 10, fontWeight: "bold" }, axisLabel: { color: t.textColor, fontSize: 10, fontWeight: "bold" }, splitLine: { lineStyle: { color: t.gridColor } } },
+        { type: "value", name: "市值(亿)", nameTextStyle: { color: t.warningColor, fontSize: 10, fontWeight: "bold" }, axisLabel: { color: t.textColor, fontSize: 10, fontWeight: "bold" }, splitLine: { show: false } },
       ],
       series: [
         { name: "营业收入 TTM", type: "bar", yAxisIndex: 0, data: revenue, itemStyle: { color: t.infoColor, borderRadius: [2, 2, 0, 0] }, barWidth: 6 },
@@ -597,11 +611,11 @@ export function CostMarginChart({
         axisPointer: { type: "shadow" },
         backgroundColor: t.tooltipBg,
         borderColor: t.tooltipBorder,
-        textStyle: { color: t.tooltipText },
+        textStyle: { color: t.tooltipText, fontSize: 12, fontWeight: "bold" },
         formatter: (params: any[]) => {
           if (!Array.isArray(params) || !params.length) return "";
           const date = params[0].axisValue;
-          const lines = [`<div style="font-weight:600;margin-bottom:4px">${date}</div>`];
+          const lines = [`<div style="font-weight:700;margin-bottom:4px">${date}</div>`];
           for (const p of params) {
             const v = p.value;
             if (v == null) continue;
@@ -609,17 +623,17 @@ export function CostMarginChart({
             const hasPct = /[%％]\s*$/.test(seriesName);
             const unit = hasPct ? "%" : " 亿";
             const display = typeof v === "number" ? v.toFixed(2) + unit : String(v);
-            lines.push(`<div style="display:flex;justify-content:space-between;gap:12px;font-size:11px"><span>${p.marker}${seriesName}</span><span>${display}</span></div>`);
+            lines.push(`<div style="display:flex;justify-content:space-between;gap:12px;font-size:12px;font-weight:600"><span>${p.marker}${seriesName}</span><span style="font-weight:700">${display}</span></div>`);
           }
           return lines.join("");
         },
       },
-      legend: { data: ["营业收入 TTM", "营业成本 TTM", "毛利率"], textStyle: { color: t.textColor, fontSize: 10 }, top: 0, right: 4, itemWidth: 10, itemHeight: 8, itemGap: 12 },
+      legend: { data: ["营业收入 TTM", "营业成本 TTM", "毛利率"], textStyle: { color: t.textColor, fontSize: 11, fontWeight: "bold" }, top: 0, right: 4, itemWidth: 10, itemHeight: 8, itemGap: 12 },
       grid: { left: 14, right: 14, top: 28, bottom: 16, containLabel: true },
-      xAxis: { type: "category", data: dates, axisLine: { lineStyle: { color: t.axisColor } }, axisLabel: { color: t.textColor, fontSize: 9, rotate: dates.length > 12 ? 30 : 0 } },
+      xAxis: { type: "category", data: dates, axisLine: { lineStyle: { color: t.axisColor } }, axisLabel: { color: t.textColor, fontSize: 10, fontWeight: "bold", rotate: dates.length > 12 ? 30 : 0 } },
       yAxis: [
-        { type: "value", axisLabel: { color: t.textColor, fontSize: 9 }, splitLine: { lineStyle: { color: t.gridColor } } },
-        { type: "value", axisLabel: { color: t.textColor, fontSize: 9, formatter: "{value}%" }, splitLine: { show: false }, min: 0, max: 100 },
+        { type: "value", axisLabel: { color: t.textColor, fontSize: 10, fontWeight: "bold" }, splitLine: { lineStyle: { color: t.gridColor } } },
+        { type: "value", axisLabel: { color: t.textColor, fontSize: 10, fontWeight: "bold", formatter: "{value}%" }, splitLine: { show: false }, min: 0, max: 100 },
       ],
       series: [
         { name: "营业收入 TTM", type: "bar", yAxisIndex: 0, data: revenue, itemStyle: { color: t.infoColor, borderRadius: [2, 2, 0, 0] }, barWidth: dates.length > 20 ? 4 : 8 },

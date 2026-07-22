@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.tools.redaction import redact_internal_paths
+from agent.src.tools.redaction import redact_internal_paths
 
 
 def serialize_task(task: Any) -> dict:

@@ -41,8 +41,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from src.live.audit import LiveActionEvent, write_live_action
-from src.live.enforcement import (
+from agent.src.live.audit import LiveActionEvent, write_live_action
+from agent.src.live.enforcement import (
     BREACH_KIND_INSTRUMENT,
     BREACH_KIND_UNIVERSE,
     BreachEvent,
@@ -51,12 +51,12 @@ from src.live.enforcement import (
     instrument_asset_class,
     last_price_usd,
 )
-from src.live.extractors import get_extractor
-from src.live.halt import halt_flag_set
-from src.live.mandate.model import MANDATE_SCHEMA_VERSION, Mandate
-from src.live.mandate.store import load_mandate
-from src.live.daily_count import increment_daily_count, read_daily_count
-from src.tools.mcp import MCPRemoteTool, MCPRemoteToolSpec, MCPServerAdapter
+from agent.src.live.extractors import get_extractor
+from agent.src.live.halt import halt_flag_set
+from agent.src.live.mandate.model import MANDATE_SCHEMA_VERSION, Mandate
+from agent.src.live.mandate.store import load_mandate
+from agent.src.live.daily_count import increment_daily_count, read_daily_count
+from agent.src.tools.mcp import MCPRemoteTool, MCPRemoteToolSpec, MCPServerAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -474,7 +474,7 @@ class LiveOrderGuardTool(MCPRemoteTool):
     def _read_tools(self, operation: str, fallback: tuple[str, ...]) -> tuple[str, ...]:
         """Return connector-specific read tools, falling back to legacy names."""
         try:
-            from src.trading.service import runner_tool_name
+            from agent.src.trading.service import runner_tool_name
 
             remote = runner_tool_name(self.broker, operation)
         except Exception:  # pragma: no cover - guard must fail closed later

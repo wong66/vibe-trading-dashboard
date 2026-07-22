@@ -9,7 +9,7 @@ gate it behind the user's mandate before any order reaches the connector.
 
 from __future__ import annotations
 
-from src.trading.types import READ_CAPABILITIES, TradingProfile
+from agent.src.trading.types import READ_CAPABILITIES, TradingProfile
 
 BINANCE_PROFILES: tuple[TradingProfile, ...] = (
     TradingProfile(

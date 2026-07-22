@@ -9,7 +9,7 @@ order-placing profiles (``okx-paper-trade`` / ``okx-live-trade``) add the
 
 from __future__ import annotations
 
-from src.trading.types import READ_CAPABILITIES, TradingProfile
+from agent.src.trading.types import READ_CAPABILITIES, TradingProfile
 
 OKX_PROFILES: tuple[TradingProfile, ...] = (
     TradingProfile(

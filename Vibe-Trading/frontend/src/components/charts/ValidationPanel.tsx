@@ -12,7 +12,7 @@ function Badge({ value, good }: { value: string; good: boolean | null }) {
         "inline-block px-2 py-0.5 rounded-full text-xs font-semibold",
         good === true && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
         good === false && "bg-red-500/15 text-red-600 dark:text-red-400",
-        good === null && "bg-zinc-500/10 text-zinc-500",
+        good === null && "bg-zinc-500/10 text-foreground",
       )}
     >
       {value}

@@ -230,16 +230,17 @@ export function OpportunityList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ambushList.length]);
 
-  // 30s auto-refresh
+  // 30s auto-refresh（仅持仓非空时轮询，空列表不浪费网络请求）
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
+    if (ambushList.length === 0) return;  // 无持仓时不建立定时器
     timerRef.current = setInterval(() => {
       fetchData(true);
     }, REFRESH_INTERVAL_MS);
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [fetchData]);
+  }, [fetchData, ambushList.length]);  // 依赖 ambushList.length：空时停轮询，有数据时启动
 
   // ── actions ──────────────────────────────────────────────────────────
 

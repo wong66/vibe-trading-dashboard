@@ -17,8 +17,8 @@ to the larger enforced notional (closing the notional+quantity bypass).
 
 from __future__ import annotations
 
-from src.live.enforcement import OrderIntent
-from src.live.mandate.model import InstrumentType
+from agent.src.live.enforcement import OrderIntent
+from agent.src.live.mandate.model import InstrumentType
 
 #: Remote tool names this extractor recognizes as order placements. Frozen to
 #: the canonical catalog: ``place_order`` is the sole order-placing WRITE tool

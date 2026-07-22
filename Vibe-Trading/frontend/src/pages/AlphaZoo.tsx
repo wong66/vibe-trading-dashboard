@@ -15,101 +15,31 @@
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import {
-  Layers,
-  Search,
-  Play,
-  ArrowLeft,
-  ArrowLeftRight,
-  Loader2,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
-  Library,
-} from "lucide-react";
+import { Layers, ArrowLeft, Play, ArrowLeftRight, Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import {
   api,
   type AlphaSummary,
   type AlphaDetailResponse,
   type AlphaBenchResult,
-  type AlphaBenchTopRow,
   type AlphaCompareResult,
 } from "@/lib/api";
-import { echarts } from "@/lib/echarts";
-import { getChartTheme } from "@/lib/chart-theme";
-import { useDarkMode } from "@/hooks/useDarkMode";
-
-/* ---------- Constants ---------- */
-
-interface ZooCard {
-  id: string;
-  title: string;
-  description: string;
-  approxCount: number;
-  accent: string;
-}
-
-// IMPORTANT: The Kakushadze 101 zoo must use the author's name as the label.
-// The legacy / trademark name is forbidden by a CI grep gate — do not add it.
-const ZOO_CARDS: ZooCard[] = [
-  {
-    id: "qlib158",
-    title: "Qlib 158",
-    description:
-      "微软 Qlib 完整 158 特征库，覆盖动量、波动率、成交量和滚动统计信号。",
-    approxCount: 154,
-    accent: "from-sky-500/20 to-sky-500/5",
-  },
-  {
-    id: "alpha101",
-    title: "Kakushadze 101 公式化因子",
-    description:
-      "来自 Kakushadze (2015) 的 101 个公式化因子；短周期截面信号。",
-    approxCount: 101,
-    accent: "from-emerald-500/20 to-emerald-500/5",
-  },
-  {
-    id: "gtja191",
-    title: "国泰君安 191",
-    description:
-      "国泰君安 191 因子；面向 A 股市场优化的技术与微观结构信号。",
-    approxCount: 191,
-    accent: "from-amber-500/20 to-amber-500/5",
-  },
-  {
-    id: "academic",
-    title: "学术异象",
-    description:
-      "精选学术文献中的长周期异象（价值、动量、质量、低波动等）。",
-    approxCount: 6,
-    accent: "from-violet-500/20 to-violet-500/5",
-  },
-];
-
-const UNIVERSE_OPTIONS = [
-  { value: "csi300", label: "沪深 300（A 股）" },
-  { value: "sp500", label: "标普 500（美股）" },
-  { value: "btc-usdt", label: "BTC-USDT（加密货币）" },
-];
-
-const PAGE_SIZE = 50;
-
-/* ---------- Helpers ---------- */
-
-function fmtNum(v: unknown, digits = 3): string {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "—";
-  return n.toFixed(digits);
-}
-
-function metaString(meta: Record<string, unknown>, key: string): string {
-  const v = meta[key];
-  if (v === undefined || v === null || v === "") return "—";
-  if (Array.isArray(v)) return v.join(", ");
-  return String(v);
-}
+import {
+  PAGE_SIZE,
+  metaString,
+  parseAlphaIds,
+  MetaRow,
+  ProgressPanel,
+  type BenchStatus,
+  type BenchProgress,
+} from "@/lib/alphaZooHelpers";
+import { AlphaZooCardGrid } from "@/components/alphaZoo/AlphaZooCardGrid";
+import { AlphaFilterBar } from "@/components/alphaZoo/AlphaFilterBar";
+import { AlphaTable } from "@/components/alphaZoo/AlphaTable";
+import { BenchForm } from "@/components/alphaZoo/BenchForm";
+import { ResultPanel } from "@/components/alphaZoo/ResultPanel";
+import { CompareForm } from "@/components/alphaZoo/CompareForm";
+import { CompareResultPanel } from "@/components/alphaZoo/CompareResultPanel";
 
 /* ---------- Page entry ---------- */
 
@@ -225,231 +155,35 @@ function BrowseView() {
       </div>
 
       {/* Zoo cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {ZOO_CARDS.map((z) => {
-          const active = zooFilter === z.id;
-          return (
-            <button
-              key={z.id}
-              type="button"
-              onClick={() => setZooFilter(active ? "" : z.id)}
-              className={cn(
-                "text-left border rounded-xl p-4 space-y-2 transition bg-gradient-to-br",
-                z.accent,
-                "hover:border-primary/50",
-                active && "border-primary ring-1 ring-primary/30",
-              )}
-            >
-              <div className="flex items-center justify-between">
-                <Library className="h-5 w-5 text-primary" aria-hidden="true" />
-                <span className="text-xs font-mono text-muted-foreground">
-                  {z.approxCount}
-                </span>
-              </div>
-              <h3 className="font-semibold text-sm leading-tight">{z.title}</h3>
-              <p className="text-xs text-muted-foreground line-clamp-3">
-                {z.description}
-              </p>
-            </button>
-          );
-        })}
-      </div>
+      <AlphaZooCardGrid zooFilter={zooFilter} onSelectZoo={(id) => setZooFilter(id)} />
 
       {/* Filter bar */}
-      <div className="flex flex-col md:flex-row md:items-end gap-3 border rounded-xl p-4 bg-card">
-        <div className="flex-1 min-w-0">
-          <label htmlFor="alpha-search" className="text-xs text-muted-foreground block mb-1">
-            Search
-          </label>
-          <div className="relative">
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <input
-              id="alpha-search"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setVisibleCount(PAGE_SIZE);
-              }}
-              placeholder="Filter by id or nickname…"
-              className="w-full pl-9 pr-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </div>
-        </div>
-        <div className="md:w-40">
-          <label htmlFor="alpha-zoo-filter" className="text-xs text-muted-foreground block mb-1">Zoo</label>
-          <select
-            id="alpha-zoo-filter"
-            value={zooFilter}
-            onChange={(e) => setZooFilter(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-          >
-            <option value="">全部因子库</option>
-            {ZOO_CARDS.map((z) => (
-              <option key={z.id} value={z.id}>
-                {z.title}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="md:w-40">
-          <label htmlFor="alpha-theme-filter" className="text-xs text-muted-foreground block mb-1">
-            Theme
-          </label>
-          <select
-            id="alpha-theme-filter"
-            value={themeFilter}
-            onChange={(e) => setThemeFilter(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-          >
-            <option value="">全部主题</option>
-            {themeOptions.map((tname) => (
-              <option key={tname} value={tname}>
-                {tname}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="md:w-44">
-          <label htmlFor="alpha-universe-filter" className="text-xs text-muted-foreground block mb-1">
-            Universe
-          </label>
-          <select
-            id="alpha-universe-filter"
-            value={universeFilter}
-            onChange={(e) => setUniverseFilter(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-          >
-            <option value="">全部范围</option>
-            {UNIVERSE_OPTIONS.map((u) => (
-              <option key={u.value} value={u.value}>
-                {u.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <Link
-          to={compareHref}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium hover:bg-muted hover:text-foreground transition"
-          title="勾选 2+ 个因子，然后逐一对比"
-        >
-          <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden="true" /> Compare
-          {selected.size >= 2 ? ` (${selected.size})` : ""}
-        </Link>
-        <Link
-          to="/alpha-zoo/bench"
-          className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition"
-        >
-          <Play className="h-3.5 w-3.5" aria-hidden="true" /> Run benchmark
-        </Link>
-      </div>
+      <AlphaFilterBar
+        search={search}
+        onSearchChange={(v) => {
+          setSearch(v);
+          setVisibleCount(PAGE_SIZE);
+        }}
+        zooFilter={zooFilter}
+        onZooFilterChange={setZooFilter}
+        themeFilter={themeFilter}
+        onThemeFilterChange={setThemeFilter}
+        universeFilter={universeFilter}
+        onUniverseFilterChange={setUniverseFilter}
+        themeOptions={themeOptions}
+        selectedCount={selected.size}
+        compareHref={compareHref}
+      />
 
       {/* Table */}
-      {/* TODO(v0.2): switch to react-window if alpha count exceeds 5000 */}
-      <div className="border rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm" aria-label="因子目录">
-            <caption className="sr-only">因子目录</caption>
-            <thead>
-              <tr className="border-b bg-muted/40">
-                <th className="w-10 px-3 py-2.5">
-                  <span className="sr-only">选择对比</span>
-                </th>
-                <th className="text-left px-4 py-2.5 text-muted-foreground">
-                  ID
-                </th>
-                <th className="text-left px-4 py-2.5 text-muted-foreground">
-                  Zoo
-                </th>
-                <th className="text-left px-4 py-2.5 text-muted-foreground">
-                  Theme
-                </th>
-                <th className="text-left px-4 py-2.5 text-muted-foreground hidden md:table-cell">
-                  Universe
-                </th>
-                <th className="text-right px-4 py-2.5 text-muted-foreground" title="Predictive half-life: trading days before the signal's edge decays">
-                  衰减（天）
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin inline mr-2" aria-hidden="true" />
-                    Loading alphas…
-                  </td>
-                </tr>
-              ) : visible.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                    没有因子匹配当前筛选条件。
-                  </td>
-                </tr>
-              ) : (
-                visible.map((a) => (
-                  <tr
-                    key={`${a.zoo}:${a.id}`}
-                    className={cn(
-                      "border-b last:border-0 hover:bg-muted/20",
-                      selected.has(a.id) && "bg-primary/5",
-                    )}
-                  >
-                    <td className="px-3 py-2">
-                      <input
-                        type="checkbox"
-                        checked={selected.has(a.id)}
-                        onChange={() => toggleSelected(a.id)}
-                        aria-label={`Select ${a.id} for compare`}
-                        className="h-4 w-4 rounded border-input accent-primary cursor-pointer"
-                      />
-                    </td>
-                    <td className="px-4 py-2 font-mono text-xs">
-                      <Link
-                        to={`/alpha-zoo/${encodeURIComponent(a.id)}`}
-                        className="text-primary hover:underline"
-                      >
-                        {a.id}
-                      </Link>
-                      {a.nickname && (
-                        <span className="ml-2 text-muted-foreground font-sans">
-                          {a.nickname}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2 text-xs">{a.zoo}</td>
-                    <td className="px-4 py-2 text-xs text-muted-foreground">
-                      {(a.theme || []).join(", ") || "—"}
-                    </td>
-                    <td className="px-4 py-2 text-xs text-muted-foreground hidden md:table-cell">
-                      {(a.universe || []).join(", ") || "—"}
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono tabular-nums text-xs">
-                      {a.decay_horizon ?? "—"}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        {!loading && visible.length < filtered.length && (
-          <div className="border-t p-3 flex items-center justify-between text-xs text-muted-foreground">
-            <span>
-              Showing {visible.length} of {filtered.length}
-            </span>
-            <button
-              type="button"
-              onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-              className="px-3 py-1 rounded-md border hover:bg-muted hover:text-foreground transition"
-            >
-              加载更多
-            </button>
-          </div>
-        )}
-      </div>
+      <AlphaTable
+        loading={loading}
+        visible={visible}
+        filteredLength={filtered.length}
+        selected={selected}
+        onToggleSelected={toggleSelected}
+        onLoadMore={() => setVisibleCount((c) => c + PAGE_SIZE)}
+      />
     </div>
   );
 }
@@ -600,24 +334,9 @@ function DetailView({ alphaId }: DetailProps) {
   );
 }
 
-function MetaRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
-  return (
-    <tr className={cn(!last && "border-b", "hover:bg-muted/20")}>
-      <td className="px-4 py-2 text-xs text-muted-foreground w-1/3">{label}</td>
-      <td className="px-4 py-2 text-xs font-mono break-all">{value}</td>
-    </tr>
-  );
-}
 
 /* ---------- Bench view ---------- */
 
-type BenchStatus = "idle" | "submitting" | "streaming" | "done" | "error";
-
-interface BenchProgress {
-  n_done: number;
-  n_total: number;
-  current_alpha_id?: string;
-}
 
 function BenchView() {
   // Read prefill from query string (set by Detail "Run bench" button).
@@ -769,96 +488,19 @@ function BenchView() {
       </div>
 
       {/* Form */}
-      <form
+      <BenchForm
+        zoo={zoo}
+        onZooChange={setZoo}
+        universe={universe}
+        onUniverseChange={setUniverse}
+        period={period}
+        onPeriodChange={setPeriod}
+        top={top}
+        onTopChange={setTop}
+        busy={busy}
         onSubmit={startBench}
-        className="border rounded-xl p-4 bg-card grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end"
-      >
-        <div>
-          <label htmlFor="bench-zoo" className="text-xs text-muted-foreground block mb-1">Zoo</label>
-          <select
-            id="bench-zoo"
-            value={zoo}
-            onChange={(e) => setZoo(e.target.value)}
-            disabled={busy}
-            className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
-          >
-            {ZOO_CARDS.map((z) => (
-              <option key={z.id} value={z.id}>
-                {z.title}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="bench-universe" className="text-xs text-muted-foreground block mb-1">Universe</label>
-          <select
-            id="bench-universe"
-            value={universe}
-            onChange={(e) => setUniverse(e.target.value)}
-            disabled={busy}
-            className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
-          >
-            {UNIVERSE_OPTIONS.map((u) => (
-              <option key={u.value} value={u.value}>
-                {u.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="bench-period" className="text-xs text-muted-foreground block mb-1">Period</label>
-          <input
-            id="bench-period"
-            value={period}
-            onChange={(e) => setPeriod(e.target.value)}
-            disabled={busy}
-            placeholder="2020-2025"
-            className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
-          />
-        </div>
-        <div>
-          <label htmlFor="bench-top" className="text-xs text-muted-foreground block mb-1">Top</label>
-          <input
-            id="bench-top"
-            type="number"
-            min={1}
-            max={500}
-            value={Number.isFinite(top) ? top : ""}
-            onChange={(e) =>
-              // Empty input → fall back to default; submit also clamps
-              // to a safe value so NaN never reaches the API.
-              setTop(e.target.value === "" ? 20 : Number(e.target.value))
-            }
-            disabled={busy}
-            className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <button
-            type="submit"
-            disabled={busy}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition disabled:opacity-50"
-          >
-            {busy ? (
-              <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> Running…
-              </>
-            ) : (
-              <>
-                <Play className="h-3.5 w-3.5" aria-hidden="true" /> Run benchmark
-              </>
-            )}
-          </button>
-        </div>
-        {formError && (
-          <p
-            className="sm:col-span-2 lg:col-span-5 text-xs text-red-600 dark:text-red-400"
-            role="alert"
-          >
-            {formError}
-          </p>
-        )}
-      </form>
+        formError={formError}
+      />
 
       {/* Progress */}
       {(status === "submitting" || status === "streaming") && (
@@ -871,222 +513,7 @@ function BenchView() {
   );
 }
 
-function ProgressPanel({
-  jobId,
-  progress,
-}: {
-  jobId: string | null;
-  progress: BenchProgress | null;
-}) {
-  const pct = progress && progress.n_total > 0
-    ? Math.min(100, Math.round((progress.n_done / progress.n_total) * 100))
-    : 0;
-  return (
-    <div className="border rounded-xl p-4 bg-card space-y-3">
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-          {jobId ? `Job ${jobId.slice(0, 12)}…` : "Submitting…"}
-        </span>
-        {progress && (
-          <span className="font-mono tabular-nums">
-            {progress.n_done} / {progress.n_total}
-          </span>
-        )}
-      </div>
-      <div className="h-2 rounded-full bg-muted overflow-hidden">
-        <div
-          className="h-full bg-primary transition-all duration-300"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      {progress?.current_alpha_id && (
-        <p className="text-xs text-muted-foreground font-mono truncate">
-          Computing: {progress.current_alpha_id}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function ResultPanel({ result }: { result: AlphaBenchResult }) {
-  const { dark } = useDarkMode();
-  const chartRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!chartRef.current) return;
-    const theme = getChartTheme();
-    const chart = echarts.init(chartRef.current);
-    const themes = Object.keys(result.by_theme || {}).sort();
-    const aliveSeries = themes.map((k) => result.by_theme[k].alive);
-    const reversedSeries = themes.map((k) => result.by_theme[k].reversed);
-    const deadSeries = themes.map((k) => result.by_theme[k].dead);
-
-    chart.setOption({
-      backgroundColor: "transparent",
-      tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
-      legend: {
-        data: ["有效", "反转", "无效"],
-        textStyle: { color: theme.textColor, fontSize: 11 },
-        right: 8,
-        top: 4,
-      },
-      grid: { left: 8, right: 8, top: 32, bottom: 8, containLabel: true },
-      xAxis: {
-        type: "category",
-        data: themes,
-        axisLine: { lineStyle: { color: theme.axisColor } },
-        axisLabel: { color: theme.textColor, fontSize: 10, rotate: themes.length > 6 ? 30 : 0 },
-      },
-      yAxis: {
-        type: "value",
-        splitLine: { lineStyle: { color: theme.gridColor } },
-        axisLabel: { color: theme.textColor, fontSize: 10 },
-      },
-      series: [
-        { name: "有效", type: "bar", stack: "n", data: aliveSeries, itemStyle: { color: theme.upColor } },
-        { name: "反转", type: "bar", stack: "n", data: reversedSeries, itemStyle: { color: theme.warningColor } },
-        { name: "无效", type: "bar", stack: "n", data: deadSeries, itemStyle: { color: theme.downColor } },
-      ],
-    });
-
-    const ro = new ResizeObserver(() => chart.resize());
-    ro.observe(chartRef.current);
-    return () => {
-      ro.disconnect();
-      chart.dispose();
-    };
-  }, [result, dark]);
-
-  const totals = [
-    { label: "有效", value: result.alive, icon: CheckCircle2, tone: "text-green-600 dark:text-green-400" },
-    { label: "反转", value: result.reversed, icon: AlertTriangle, tone: "text-amber-600 dark:text-amber-400" },
-    { label: "无效", value: result.dead, icon: XCircle, tone: "text-red-600 dark:text-red-400" },
-    { label: "跳过", value: result.skipped ?? 0, icon: Loader2, tone: "text-muted-foreground" },
-  ];
-
-  return (
-    <div className="space-y-4">
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {totals.map(({ label, value, icon: Icon, tone }) => (
-          <div key={label} className="border rounded-xl p-4 bg-card flex items-center gap-3">
-            <Icon className={cn("h-5 w-5 shrink-0", tone)} aria-hidden="true" />
-            <div>
-              <p className="text-xs text-muted-foreground">{label}</p>
-              <p className="text-xl font-bold tabular-nums">{value}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Top tables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <TopTable title="信息比率 Top 5" rows={result.top5_by_ir || []} />
-        <TopTable title="最多反转" rows={(result.dead_examples || []).slice(0, 3)} />
-      </div>
-
-      {/* By-theme breakdown */}
-      {result.by_theme && Object.keys(result.by_theme).length > 0 && (
-        <div className="border rounded-xl p-4 bg-card">
-          <h3 className="text-sm font-medium text-muted-foreground mb-2">
-            按主题
-          </h3>
-          <div ref={chartRef} style={{ height: 240 }} />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function TopTable({ title, rows }: { title: string; rows: AlphaBenchTopRow[] }) {
-  return (
-    <div className="border rounded-xl overflow-hidden bg-card">
-      <div className="px-4 py-2.5 border-b bg-muted/40">
-        <h3 className="text-sm font-medium">{title}</h3>
-      </div>
-      {rows.length === 0 ? (
-        <div className="px-4 py-6 text-xs text-muted-foreground text-center">
-          无数据。
-        </div>
-      ) : (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b">
-              <th className="text-left px-4 py-2 text-xs text-muted-foreground font-medium">ID</th>
-              <th className="text-right px-4 py-2 text-xs text-muted-foreground font-medium">Mean IC</th>
-              <th className="text-right px-4 py-2 text-xs text-muted-foreground font-medium">IR</th>
-              <th className="text-left px-4 py-2 text-xs text-muted-foreground font-medium">Theme</th>
-              <th className="text-left px-4 py-2 text-xs text-muted-foreground font-medium">Category</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} className="border-b last:border-0 hover:bg-muted/20">
-                <td className="px-4 py-2">
-                  <Link
-                    to={`/alpha-zoo/${encodeURIComponent(r.id)}`}
-                    className="text-primary hover:underline font-mono text-xs"
-                  >
-                    {r.id}
-                  </Link>
-                </td>
-                <td className="px-4 py-2 text-right font-mono tabular-nums text-xs">{fmtNum(r.ic_mean)}</td>
-                <td className="px-4 py-2 text-right font-mono tabular-nums text-xs">{fmtNum(r.ir)}</td>
-                <td className="px-4 py-2 text-xs text-muted-foreground">{(r.theme || []).join(", ") || "—"}</td>
-                <td className="px-4 py-2 text-xs">
-                  <CategoryBadge category={r.category} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
-  );
-}
-
-/**
- * Render the alpha bench category as a colored badge so users can see whether
- * a row is alive / reversed / dead at a glance. The "最多反转" panel
- * mixes reversed + dead rows; the badge keeps them distinguishable.
- */
-function CategoryBadge({ category }: { category: AlphaBenchTopRow["category"] }) {
-  const tone =
-    category === "alive"
-      ? "bg-green-500/10 text-green-700 dark:text-green-300"
-      : category === "reversed"
-        ? "bg-amber-500/10 text-amber-700 dark:text-amber-300"
-        : "bg-red-500/10 text-red-700 dark:text-red-300";
-  return (
-    <span className={cn("inline-block px-2 py-0.5 rounded-full text-[10px] font-medium", tone)}>
-      {category}
-    </span>
-  );
-}
-
 /* ---------- Compare view ---------- */
-
-const SORT_OPTIONS = [
-  { value: "ir", label: "信息比率（IR）" },
-  { value: "ic_mean", label: "IC 均值" },
-  { value: "ic_positive_ratio", label: "IC > 0 比例" },
-  { value: "ic_count", label: "样本数" },
-];
-
-/** Split a free-text id list on commas / whitespace; dedupe, preserve order. */
-function parseAlphaIds(text: string): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const raw of text.split(/[\s,]+/)) {
-    const id = raw.trim();
-    if (id && !seen.has(id)) {
-      seen.add(id);
-      out.push(id);
-    }
-  }
-  return out;
-}
 
 /**
  * Head-to-head comparison of a hand-picked set of alphas.
@@ -1226,184 +653,26 @@ function CompareView() {
         </p>
       </div>
 
-      <form onSubmit={startCompare} className="border rounded-xl p-4 bg-card space-y-3">
-        <div>
-          <label htmlFor="compare-ids" className="text-xs text-muted-foreground block mb-1">
-            Alpha ids{ids.length > 0 ? ` (${ids.length} selected)` : ""}
-          </label>
-          <textarea
-            id="compare-ids"
-            value={idsText}
-            onChange={(e) => setIdsText(e.target.value)}
-            disabled={busy}
-            rows={2}
-            placeholder="alpha101_1, alpha101_2, gtja191_5"
-            className="w-full px-3 py-2 rounded-lg border bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
-          />
-          <p className="text-[11px] text-muted-foreground mt-1">
-            Separate ids with commas or spaces. Tip: tick alphas in the catalogue
-            and hit “Compare” to prefill this.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div>
-            <label htmlFor="compare-universe" className="text-xs text-muted-foreground block mb-1">Universe</label>
-            <select
-              id="compare-universe"
-              value={universe}
-              onChange={(e) => setUniverse(e.target.value)}
-              disabled={busy}
-              className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
-            >
-              {UNIVERSE_OPTIONS.map((u) => (
-                <option key={u.value} value={u.value}>
-                  {u.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="compare-period" className="text-xs text-muted-foreground block mb-1">Period</label>
-            <input
-              id="compare-period"
-              value={period}
-              onChange={(e) => setPeriod(e.target.value)}
-              disabled={busy}
-              placeholder="2020-2025"
-              className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
-            />
-          </div>
-          <div>
-            <label htmlFor="compare-sort" className="text-xs text-muted-foreground block mb-1">Rank by</label>
-            <select
-              id="compare-sort"
-              value={sort}
-              onChange={(e) => setSort(e.target.value)}
-              disabled={busy}
-              className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
-            >
-              {SORT_OPTIONS.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            type="submit"
-            disabled={busy || ids.length < 2}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition disabled:opacity-50"
-          >
-            {busy ? (
-              <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> Running…
-              </>
-            ) : (
-              <>
-                <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden="true" /> Compare
-              </>
-            )}
-          </button>
-          {ids.length < 2 && (
-            <span className="text-xs text-muted-foreground">请至少选择 2 个因子。</span>
-          )}
-        </div>
-
-        {formError && (
-          <p className="text-xs text-red-600 dark:text-red-400" role="alert">
-            {formError}
-          </p>
-        )}
-      </form>
+      <CompareForm
+        idsText={idsText}
+        onIdsTextChange={setIdsText}
+        ids={ids}
+        universe={universe}
+        onUniverseChange={setUniverse}
+        period={period}
+        onPeriodChange={setPeriod}
+        sort={sort}
+        onSortChange={setSort}
+        busy={busy}
+        onSubmit={startCompare}
+        formError={formError}
+      />
 
       {(status === "submitting" || status === "streaming") && (
         <ProgressPanel jobId={jobId} progress={progress} />
       )}
 
       {result && <CompareResultPanel result={result} />}
-    </div>
-  );
-}
-
-function CompareResultPanel({ result }: { result: AlphaCompareResult }) {
-  const deltaKey = `delta_${result.sort}_vs_best`;
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-        <span className="inline-flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400">
-          <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Winner:{" "}
-          <span className="font-mono">{result.winner}</span>
-        </span>
-        <span className="text-muted-foreground">
-          {result.n_compared} 个对比 · 排序：{result.sort} · {result.universe} · {result.period}
-        </span>
-        {result.n_skipped > 0 && (
-          <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
-            <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" /> {result.n_skipped} 个跳过
-          </span>
-        )}
-      </div>
-
-      <div className="border rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm" aria-label="因子对比排名">
-            <thead>
-              <tr className="border-b bg-muted/40 text-muted-foreground text-xs">
-                <th className="text-right px-3 py-2">#</th>
-                <th className="text-left px-3 py-2">Alpha</th>
-                <th className="text-left px-3 py-2 hidden sm:table-cell">Zoo</th>
-                <th className="text-right px-3 py-2">IC mean</th>
-                <th className="text-right px-3 py-2 hidden md:table-cell">IC std</th>
-                <th className="text-right px-3 py-2">IR</th>
-                <th className="text-right px-3 py-2 hidden md:table-cell" title="Share of periods with positive IC">IC&gt;0</th>
-                <th className="text-right px-3 py-2 hidden lg:table-cell" title="IC sample count">n</th>
-                <th className="text-right px-3 py-2" title={`Gap to the leader on ${result.sort}`}>Δ {result.sort}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {result.ranking.map((r) => (
-                <tr
-                  key={`${r.zoo}:${r.id}`}
-                  className={cn(
-                    "border-b last:border-0 hover:bg-muted/20",
-                    r.rank === 1 && "bg-emerald-500/5",
-                  )}
-                >
-                  <td className="px-3 py-2 text-right font-mono tabular-nums">{r.rank}</td>
-                  <td className="px-3 py-2 font-mono text-xs">
-                    <Link
-                      to={`/alpha-zoo/${encodeURIComponent(r.id)}`}
-                      className="text-primary hover:underline"
-                    >
-                      {r.id}
-                    </Link>
-                  </td>
-                  <td className="px-3 py-2 text-xs text-muted-foreground hidden sm:table-cell">{r.zoo}</td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums">{fmtNum(r.ic_mean, 4)}</td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums hidden md:table-cell">{fmtNum(r.ic_std, 4)}</td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums">{fmtNum(r.ir, 3)}</td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums hidden md:table-cell">{fmtNum(r.ic_positive_ratio, 3)}</td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums hidden lg:table-cell">{r.ic_count}</td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums text-muted-foreground">
-                    {r.rank === 1 ? "—" : fmtNum(Number(r[deltaKey]), 4)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {result.skipped.length > 0 && (
-        <p className="text-xs text-muted-foreground">
-          <span className="font-medium">已跳过：</span>{" "}
-          {result.skipped.map((s) => `${s.id} (${s.reason})`).join("; ")}
-        </p>
-      )}
     </div>
   );
 }

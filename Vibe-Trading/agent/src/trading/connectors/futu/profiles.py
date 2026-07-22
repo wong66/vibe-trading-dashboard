@@ -9,7 +9,7 @@ trade environment (``SIMULATE`` vs ``REAL``) and the account is resolved by its
 
 from __future__ import annotations
 
-from src.trading.types import READ_CAPABILITIES, TradingProfile
+from agent.src.trading.types import READ_CAPABILITIES, TradingProfile
 
 FUTU_PROFILES: tuple[TradingProfile, ...] = (
     TradingProfile(

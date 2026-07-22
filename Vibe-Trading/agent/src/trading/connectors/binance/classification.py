@@ -8,7 +8,7 @@ gate.
 
 from __future__ import annotations
 
-from src.live.classification import ToolClass
+from agent.src.live.classification import ToolClass
 
 #: Binance (ccxt) spot operation read/write catalog.
 BINANCE_TOOL_CLASS: dict[str, ToolClass] = {

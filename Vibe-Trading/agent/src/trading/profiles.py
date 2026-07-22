@@ -5,18 +5,18 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from src.config.paths import get_runtime_root
-from src.trading.connectors.alpaca.profiles import ALPACA_PROFILES
-from src.trading.connectors.binance.profiles import BINANCE_PROFILES
-from src.trading.connectors.dhan.profiles import DHAN_PROFILES
-from src.trading.connectors.futu.profiles import FUTU_PROFILES
-from src.trading.connectors.ibkr.profiles import IBKR_PROFILES
-from src.trading.connectors.longbridge.profiles import LONGBRIDGE_PROFILES
-from src.trading.connectors.okx.profiles import OKX_PROFILES
-from src.trading.connectors.robinhood.profiles import ROBINHOOD_PROFILES
-from src.trading.connectors.shoonya.profiles import SHOONYA_PROFILES
-from src.trading.connectors.tiger.profiles import TIGER_PROFILES
-from src.trading.types import TradingProfile
+from agent.src.config.paths import get_runtime_root
+from agent.src.trading.connectors.alpaca.profiles import ALPACA_PROFILES
+from agent.src.trading.connectors.binance.profiles import BINANCE_PROFILES
+from agent.src.trading.connectors.dhan.profiles import DHAN_PROFILES
+from agent.src.trading.connectors.futu.profiles import FUTU_PROFILES
+from agent.src.trading.connectors.ibkr.profiles import IBKR_PROFILES
+from agent.src.trading.connectors.longbridge.profiles import LONGBRIDGE_PROFILES
+from agent.src.trading.connectors.okx.profiles import OKX_PROFILES
+from agent.src.trading.connectors.robinhood.profiles import ROBINHOOD_PROFILES
+from agent.src.trading.connectors.shoonya.profiles import SHOONYA_PROFILES
+from agent.src.trading.connectors.tiger.profiles import TIGER_PROFILES
+from agent.src.trading.types import TradingProfile
 
 CONFIG_FILENAME = "trading-connections.json"
 DEFAULT_PROFILE_ID = "ibkr-paper-local"

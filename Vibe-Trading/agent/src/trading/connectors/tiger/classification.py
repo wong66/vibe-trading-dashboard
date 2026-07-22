@@ -9,7 +9,7 @@ WRITE (fail-closed) when the live gate consults this map.
 
 from __future__ import annotations
 
-from src.live.classification import ToolClass
+from agent.src.live.classification import ToolClass
 
 #: Tiger SDK operation read/write catalog. Read operations mirror the connector's
 #: public read functions; write operations are the order-mutating SDK calls,

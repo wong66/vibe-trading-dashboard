@@ -1,208 +1,31 @@
 import { useEffect, useRef, useState, useMemo, useCallback, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Send, Loader2, ArrowDown, Square, Download, Plus, Paperclip, X, Users, Target, ChevronDown, Pencil, Check, Play, OctagonX, Activity, Ban, CheckCircle2, Landmark } from "lucide-react";
 import { toast } from "sonner";
 import { useAgentStore } from "@/stores/agent";
 import { useSSE } from "@/hooks/useSSE";
-import { ApiError, AUTH_REQUIRED_MESSAGE, api, isAuthRequiredError, type GoalSnapshot, type MandateProposal, type MandateCommitted, type LiveAction, type LiveHalted, type LiveStatus } from "@/lib/api";
+import { ApiError, AUTH_REQUIRED_MESSAGE, api, isAuthRequiredError, type GoalSnapshot, type MandateCommitted, type LiveHalted, type LiveStatus } from "@/lib/api";
 import { isReportWorthyRun } from "@/lib/runReports";
 import type { AgentMessage, ToolCallEntry } from "@/types/agent";
-import { AgentAvatar } from "@/components/chat/AgentAvatar";
 import { WelcomeScreen } from "@/components/chat/WelcomeScreen";
-import { MessageBubble } from "@/components/chat/MessageBubble";
-import { ThinkingTimeline } from "@/components/chat/ThinkingTimeline";
 import { ConversationTimeline } from "@/components/chat/ConversationTimeline";
-import { ToolProgressIndicator } from "@/components/chat/ToolProgressIndicator";
-import { MandateProposalCard } from "@/components/chat/MandateProposalCard";
-import { RunnerStatus } from "@/components/chat/RunnerStatus";
-import { SwarmStatusCard } from "@/components/chat/SwarmStatusCard";
+import { ChatMessageList } from "@/components/chat/ChatMessageList";
+import { SkeletonLoading } from "@/components/chat/SkeletonLoading";
+import { ScrollToBottomButton } from "@/components/chat/ScrollToBottomButton";
+import { InputArea } from "@/components/chat/InputArea";
+import { connectAgentSSE } from "@/lib/agentSSEHelpers";
 import {
-  applySwarmEvent,
-  buildSwarmStatusFromStarted,
-  buildSwarmStatusFromToolResultPreview,
-} from "@/lib/swarmStatus";
-
-/* ---------- Message grouping ---------- */
-type MsgGroup =
-  | { kind: "single"; msg: AgentMessage }
-  | { kind: "timeline"; msgs: AgentMessage[] };
-
-function groupMessages(msgs: AgentMessage[]): MsgGroup[] {
-  const out: MsgGroup[] = [];
-  let buf: AgentMessage[] = [];
-  const flush = () => { if (buf.length) { out.push({ kind: "timeline", msgs: [...buf] }); buf = []; } };
-  for (const m of msgs) {
-    if (["thinking", "tool_call", "tool_result", "compact"].includes(m.type)) {
-      buf.push(m);
-    } else {
-      flush();
-      out.push({ kind: "single", msg: m });
-    }
-  }
-  flush();
-  return out;
-}
-
-const act = () => useAgentStore.getState();
-
-/** Poll cadence for the shared `GET /live/status` snapshot. */
-const LIVE_STATUS_POLL_INTERVAL_MS = 15_000;
-const CONNECTOR_CHECK_PROMPT =
-  "List my trading connector profiles, show which one is selected, then check that selected connector. If it is not ready, tell me exactly what setup step is missing. Do not place or modify orders.";
-const CONNECTOR_PORTFOLIO_PROMPT =
-  "Use the selected trading connector profile to summarize my account, positions, concentration, cash, and portfolio risk. Do not place or modify orders.";
-
-/* ---------- Connector runtime channel ----------
- * Mandate proposals and live-action chips render as standalone timeline items,
- * never folded into the thinking timeline (SPEC Consent §2 grouping note). They
- * are driven by dedicated state rather than the chat message store because they
- * are privileged-surface artifacts, not chat messages, and the proposal card
- * needs commit/adjust callbacks the generic MessageBubble does not carry. */
-interface ProposalItem {
-  kind: "proposal";
-  timestamp: number;
-  proposal: MandateProposal;
-}
-interface LiveActionItem {
-  kind: "live_action";
-  timestamp: number;
-  action: LiveAction;
-}
-type LiveItem = ProposalItem | LiveActionItem;
-
-function normalizeBrokerScope(broker: string | null | undefined): string | null {
-  const normalized = broker?.trim().toLowerCase();
-  return normalized || null;
-}
-
-function isGlobalLiveHalt(halt: LiveHalted | null): boolean {
-  return halt != null && normalizeBrokerScope(halt.broker) == null;
-}
-
-function haltScopeStillActive(halt: LiveHalted, status: LiveStatus): boolean {
-  const broker = normalizeBrokerScope(halt.broker);
-  if (!broker) return status.global_halted;
-  return status.global_halted || status.brokers.some((item) => (
-    normalizeBrokerScope(item.auth.broker) === broker && item.halted
-  ));
-}
-
-function liveActionStyle(kind: string): { icon: typeof Activity; tone: string } {
-  switch (kind) {
-    case "order_rejected":
-    case "breach":
-      return { icon: Ban, tone: "border-amber-500/40 bg-amber-500/5 text-amber-600 dark:text-amber-400" };
-    case "halt_tripped":
-      return { icon: OctagonX, tone: "border-destructive/40 bg-destructive/5 text-destructive" };
-    case "mandate_committed":
-    case "halt_cleared":
-      return { icon: CheckCircle2, tone: "border-emerald-500/40 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400" };
-    default:
-      return { icon: Activity, tone: "border-sky-500/40 bg-sky-500/5 text-sky-600 dark:text-sky-400" };
-  }
-}
-
-function liveActionLabel(action: LiveAction): string {
-  return action.kind.replace(/_/g, " ");
-}
-
-function LiveActionChip({ action }: { action: LiveAction }) {
-  const { icon: Icon, tone } = liveActionStyle(action.kind);
-  return (
-    <div className="flex gap-3">
-      <AgentAvatar />
-      <div className="flex-1 min-w-0">
-        <div className={["inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs", tone].join(" ")}>
-          <Icon className="h-3 w-3 shrink-0" />
-          <span className="shrink-0 font-medium uppercase tracking-wide text-[10px]">RUNTIME</span>
-          <span className="shrink-0 font-medium">{liveActionLabel(action)}</span>
-          {action.intent_normalized && (
-            <span className="truncate text-foreground/80">· {action.intent_normalized}</span>
-          )}
-          {action.outcome && (
-            <span className="shrink-0 font-mono text-[10px] text-muted-foreground">· {action.outcome}</span>
-          )}
-          {action.remote_tool && (
-            <span className="shrink-0 font-mono text-[10px] text-muted-foreground">· {action.remote_tool}</span>
-          )}
-          {action.error && <span className="truncate text-destructive">· {action.error}</span>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function isCriterionStatusMet(status: string): boolean {
-  return !["", "pending", "open", "unsatisfied"].includes(status.toLowerCase());
-}
-
-function getGoalProgress(snapshot: GoalSnapshot | null): {
-  met: number;
-  total: number;
-  label: string;
-  metLabel: string;
-  evidenceTotal: number;
-} {
-  const total = snapshot?.criteria.length ?? 0;
-  const met = snapshot?.criteria.filter((item) => criterionCovered(snapshot, item)).length ?? 0;
-  const evidenceTotal = snapshot?.evidence_count ?? 0;
-  return {
-    met,
-    total,
-    label: total > 0 ? `${met}/${total}` : "",
-    metLabel: total > 0 ? `${met}/${total} met` : "",
-    evidenceTotal,
-  };
-}
-
-function statusLabel(status: string): string {
-  return status.replace(/_/g, " ");
-}
-
-function isTerminalGoalStatus(status: string): boolean {
-  return ["complete", "cancelled", "blocked", "superseded", "usage_limited"].includes(status);
-}
-
-function criterionIndexLabel(index: number): string {
-  return String(index + 1);
-}
-
-function criterionEvidenceCount(snapshot: GoalSnapshot, criterionId: string): number {
-  return snapshot.evidence.filter((item) => item.criterion_id === criterionId).length;
-}
-
-function criterionCovered(snapshot: GoalSnapshot, criterion: GoalSnapshot["criteria"][number]): boolean {
-  return isCriterionStatusMet(criterion.status) || criterionEvidenceCount(snapshot, criterion.criterion_id) > 0;
-}
-
-function latestGoalEvidence(snapshot: GoalSnapshot) {
-  return [...snapshot.evidence]
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 2);
-}
-
-function goalKickoffPrompt(objective: string): string {
-  return [
-    "立即开始执行此研究目标。",
-    "仅限研究用途，需要证据时使用可用工具，将具体证据添加到目标账本，持续执行直至目标完成、阻塞、等待用户输入或达到预算上限。",
-    "",
-    `Goal: ${objective}`,
-  ].join("\n");
-}
-
-function goalContinuePrompt(snapshot: GoalSnapshot): string {
-  const openCriteria = snapshot.criteria
-    .filter((item) => item.required && !criterionCovered(snapshot, item))
-    .map((item) => `- ${item.text}`)
-    .join("\n");
-  return [
-    "继续执行当前研究目标。",
-    "按需使用实际可用工具，将证据添加到目标账本，仅在目标完成、阻塞、等待用户输入或达到预算上限时停止。",
-    "",
-    `Goal: ${snapshot.goal.objective}`,
-    openCriteria ? `Open criteria:\n${openCriteria}` : "所有标准似已覆盖；审计账本，若完成已合理则更新目标状态。",
-  ].join("\n");
-}
+  groupMessages,
+  act,
+  LIVE_STATUS_POLL_INTERVAL_MS,
+  CONNECTOR_CHECK_PROMPT,
+  CONNECTOR_PORTFOLIO_PROMPT,
+  type MsgGroup,
+  type LiveItem,
+  isGlobalLiveHalt,
+  haltScopeStillActive,
+  goalKickoffPrompt,
+  goalContinuePrompt,
+} from "@/lib/agentHelpers";
 
 /* ---------- Component ---------- */
 export function Agent() {
@@ -227,7 +50,6 @@ export function Agent() {
   const [attachment, setAttachment] = useState<{ filename: string; filePath: string } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [showUploadMenu, setShowUploadMenu] = useState(false);
-  const uploadMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [swarmPreset, setSwarmPreset] = useState<{ name: string; title: string } | null>(null);
   const [goalComposerActive, setGoalComposerActive] = useState(false);
@@ -402,275 +224,23 @@ export function Agent() {
   }, [forceScrollToBottom]);
 
   const setupSSE = useCallback((sid: string) => {
-    if (sseSessionRef.current === sid) return;
-    disconnect();
-    sseSessionRef.current = sid;
-
-    const touch = () => { lastEventRef.current = Date.now(); };
-
-    connect(api.sseUrl(sid, { replay: "active" }), {
-      text_delta: (d) => { touch(); act().appendDelta(String(d.delta || "")); scrollToBottom(); },
-      thinking_done: () => { touch(); /* don't flush — keep streaming text visible */ },
-
-      tool_call: (d) => {
-        touch();
-        const toolName = String(d.tool || "");
-        // Only update toolCalls tracker (no message creation during streaming)
-        act().addToolCall({
-          id: toolName, tool: toolName,
-          arguments: (d.arguments as Record<string, string>) ?? {},
-          status: "running", timestamp: Date.now(),
-        });
-        scrollToBottom();
-      },
-
-      tool_result: (d) => {
-        touch();
-        const toolName = String(d.tool || "");
-        // Drop any in-flight coalesced progress for this tool.
-        pendingProgressRef.current.delete(toolName);
-        // Only update tracker (no message creation during streaming)
-        act().updateToolCall(toolName, {
-          status: d.status === "ok" ? "ok" : "error",
-          preview: String(d.preview || ""),
-          elapsed_ms: Number(d.elapsed_ms || 0),
-          elapsed_s: undefined,
-          progress: undefined,
-        });
-        if (toolName === "run_swarm") {
-          const fallback = buildSwarmStatusFromToolResultPreview(String(d.preview || ""));
-          if (fallback && !act().messages.some((m) => m.type === "swarm_status" && m.swarmRunId === fallback.runId)) {
-            act().upsertSwarmStatus(fallback);
-          }
-        }
-      },
-
-      tool_heartbeat: (d) => {
-        touch();
-        // Keep streaming state alive during long-running tools (swarm, backtest)
-        if (act().status !== "streaming") act().setStatus("streaming");
-        const toolName = String(d.tool || "");
-        if (!toolName) return;
-        act().updateToolCall(toolName, {
-          elapsed_s: Number(d.elapsed_s || 0),
-        });
-      },
-
-      tool_progress: (d) => {
-        touch();
-        const toolName = String(d.tool || "");
-        if (!toolName) return;
-        const payload: NonNullable<ToolCallEntry["progress"]> = {};
-        if (typeof d.stage === "string" && d.stage) payload.stage = d.stage;
-        if (typeof d.message === "string" && d.message) payload.message = d.message;
-        if (typeof d.current === "number") payload.current = d.current;
-        if (typeof d.total === "number") payload.total = d.total;
-        // Coalesce: keep latest payload per tool, flush once per animation frame.
-        pendingProgressRef.current.set(toolName, payload);
-        if (progressRafRef.current) return;
-        progressRafRef.current = requestAnimationFrame(() => {
-          progressRafRef.current = 0;
-          const pending = pendingProgressRef.current;
-          if (pending.size === 0) return;
-          const store = act();
-          for (const [tool, progress] of pending) {
-            store.updateToolCall(tool, { progress });
-          }
-          pending.clear();
-        });
-      },
-
-      compact: () => { touch(); },
-
-      "attempt.created": () => {
-        touch();
-        // Backend has created a new attempt — ensure streaming state is active
-        // even if we connected mid-stream (SSE replay / page reload).
-        if (act().status !== "streaming") act().setStatus("streaming");
-      },
-
-      "attempt.started": () => {
-        touch();
-        // Backend has begun executing the attempt. Re-affirm streaming state
-        // so the UI shows a working indicator for reconnects and fresh loads.
-        if (act().status !== "streaming") act().setStatus("streaming");
-      },
-
-      "attempt.completed": async (d) => {
-        touch();
-        const s = act();
-        // Build ThinkingTimeline summary from accumulated toolCalls
-        const completedTools = s.toolCalls;
-        if (completedTools.length > 0) {
-          for (const tc of completedTools) {
-            s.addMessage({ id: tc.id + "_call", type: "tool_call", content: "", tool: tc.tool, args: tc.arguments, status: tc.status || "ok", timestamp: tc.timestamp });
-            if (tc.elapsed_ms != null) {
-              s.addMessage({ id: "", type: "tool_result", content: tc.preview || "", tool: tc.tool, status: tc.status || "ok", elapsed_ms: tc.elapsed_ms, timestamp: tc.timestamp + 1 });
-            }
-          }
-        }
-
-        // Clear streaming text (don't create thinking message)
-        s.clearStreaming();
-
-        // Add final answer
-        const runDir = String(d.run_dir || "");
-        const runId = runDir ? runDir.split(/[/\\]/).pop() : undefined;
-        const summary = String(d.summary || "");
-        if (summary) s.addMessage({ id: "", type: "answer", content: summary, timestamp: Date.now() });
-
-        // Detect Shadow Account id if render_shadow_report fired successfully this turn
-        const shadowCall = completedTools.find(
-          (tc) => tc.tool === "render_shadow_report" && (tc.status || "ok") === "ok",
-        );
-        const shadowMatch = shadowCall?.preview?.match(/"shadow_id"\s*:\s*"(shadow_[A-Za-z0-9_]+)"/);
-        const shadowId = shadowMatch?.[1];
-
-        // Show RunCompleteCard when the turn produced backtest metrics or a shadow report
-        if (runId) {
-          let runMetrics: Record<string, number> | undefined;
-          let runCurve: Array<{ time: string; equity: number }> | undefined;
-          let showCard = false;
-          try {
-            const runData = await api.getRun(runId);
-            if (isReportWorthyRun(runData)) {
-              runMetrics = runData.metrics;
-              runCurve = runData.equity_curve?.map(e => ({ time: e.time, equity: Number(e.equity) }));
-              showCard = true;
-            }
-          } catch {
-            showCard = true; // fetch failed → show link as fallback
-          }
-          if (showCard || shadowId) {
-            s.addMessage({
-              id: "", type: "run_complete", content: "", runId,
-              metrics: showCard ? runMetrics : undefined,
-              equityCurve: showCard ? runCurve : undefined,
-              shadowId,
-              timestamp: Date.now(),
-            });
-          }
-        } else if (shadowId) {
-          s.addMessage({ id: "", type: "run_complete", content: "", shadowId, timestamp: Date.now() });
-        }
-
-        // Reset
-        s.setStatus("idle");
-        useAgentStore.setState({ toolCalls: [] });
-        scrollToBottom();
-      },
-
-      "attempt.failed": (d) => {
-        touch();
-        act().clearStreaming();
-        act().addMessage({ id: "", type: "error", content: String(d.error || "Execution failed"), timestamp: Date.now() });
-        act().setStatus("idle");
-        // Clear stale toolCalls so the next turn's running indicator doesn't
-        // briefly show the previous turn's progress before fresh events land.
-        useAgentStore.setState({ toolCalls: [] });
-        scrollToBottom();
-      },
-
-      "goal.created": () => {
-        touch();
-        loadGoalSnapshot(sid);
-      },
-
-      "swarm.started": (d) => {
-        touch();
-        const status = buildSwarmStatusFromStarted(d);
-        if (!status) return;
-        act().upsertSwarmStatus(status);
-        scrollToBottom();
-      },
-
-      "swarm.event": (d) => {
-        touch();
-        if (act().status !== "streaming") act().setStatus("streaming");
-        const runId = String(d.run_id || "");
-        const event = d.event;
-        if (!runId || !event) return;
-        act().updateSwarmStatus(runId, (current) => applySwarmEvent(current, event));
-        scrollToBottom();
-      },
-
-      "goal.evidence": () => {
-        touch();
-        loadGoalSnapshot(sid);
-      },
-
-      "goal.updated": (d) => {
-        touch();
-        const snapshot = d.snapshot as GoalSnapshot | undefined;
-        const goal = (d.goal as GoalSnapshot["goal"] | undefined) ?? snapshot?.goal;
-        if (goal && isTerminalGoalStatus(goal.status)) {
-          setGoalSnapshot(null);
-          setGoalDetailsOpen(false);
-          setGoalEditActive(false);
-          return;
-        }
-        if (snapshot) {
-          setGoalSnapshot(snapshot);
-          return;
-        }
-        loadGoalSnapshot(sid);
-      },
-
-      "mandate.proposal": (d) => {
-        touch();
-        const proposal = d as unknown as MandateProposal;
-        if (!proposal.proposal_id || !Array.isArray(proposal.profiles)) return;
-        setLiveItems((items) => [...items, { kind: "proposal", timestamp: Date.now(), proposal }]);
-        scrollToBottom();
-      },
-
-      "mandate.committed": (d) => {
-        touch();
-        const committed = d as unknown as MandateCommitted;
-        if (!committed.proposal_id) return;
-        setCommittedMandates((prev) => ({ ...prev, [committed.proposal_id as string]: committed }));
-        // A fresh mandate may bring up the runner; refresh the runtime panel now.
-        setLiveStatusRefresh((n) => n + 1);
-        scrollToBottom();
-      },
-
-      "live.halted": (d) => {
-        touch();
-        const halted = d as unknown as LiveHalted;
-        // Preemptive kill switch: the server has cancelled resting orders and may have
-        // flattened positions (SPEC §7.5 #6). Reflect the halted state across surfaces;
-        // the RunnerStatus panel re-polls so its per-broker rows show "halted".
-        setLiveHalted(halted);
-        setLiveStatusRefresh((n) => n + 1);
-        toast.warning("连接器运行时已暂停——运行器已停止，挂单已取消");
-      },
-
-      "live.resumed": (d) => {
-        touch();
-        // Kill switch cleared via a privileged surface action (SPEC Consent §4);
-        // clear the halted banner and re-poll runtime status.
-        void d;
-        setLiveHalted(null);
-        setLiveStatusRefresh((n) => n + 1);
-        toast.success("连接器运行时已恢复");
-      },
-
-      "live.action": (d) => {
-        touch();
-        const action = d as unknown as LiveAction;
-        if (!action.kind) return;
-        setLiveItems((items) => [...items, { kind: "live_action", timestamp: Date.now(), action }]);
-        if (action.kind === "halt_tripped") setLiveHalted({ broker: action.broker, reason: action.intent_normalized });
-        if (action.kind === "halt_cleared") setLiveHalted(null);
-        // Mandate-affecting / runner-affecting actions should refresh the runtime panel.
-        if (["mandate_committed", "halt_tripped", "halt_cleared"].includes(action.kind)) {
-          setLiveStatusRefresh((n) => n + 1);
-        }
-        scrollToBottom();
-      },
-
-      heartbeat: () => {},
-      reconnect: (d) => { act().setSseStatus("reconnecting", Number(d.attempt ?? 0)); },
+    connectAgentSSE({
+      sid,
+      sseSessionRef,
+      lastEventRef,
+      pendingProgressRef,
+      progressRafRef,
+      connect,
+      disconnect,
+      loadGoalSnapshot,
+      scrollToBottom,
+      setLiveItems,
+      setCommittedMandates,
+      setLiveHalted,
+      setLiveStatusRefresh,
+      setGoalSnapshot,
+      setGoalDetailsOpen,
+      setGoalEditActive,
     });
   }, [connect, disconnect, loadGoalSnapshot, scrollToBottom]);
 
@@ -970,6 +540,24 @@ export function Agent() {
     runPrompt(userContent);
   }, [status]);
 
+  const handleGoalComposerOpen = useCallback(() => {
+    setGoalComposerActive(true);
+    inputRef.current?.focus();
+  }, []);
+
+  const handleSwarmMode = useCallback(() => {
+    setSwarmPreset({ name: "auto", title: "Agent Swarm" });
+    inputRef.current?.focus();
+  }, []);
+
+  const handleConnectorCheck = useCallback(() => {
+    void runPrompt(CONNECTOR_CHECK_PROMPT);
+  }, [runPrompt]);
+
+  const handleConnectorPortfolio = useCallback(() => {
+    void runPrompt(CONNECTOR_PORTFOLIO_PROMPT);
+  }, [runPrompt]);
+
   const handleExport = () => {
     if (messages.length === 0) return;
     const lines: string[] = [`# Chat Export`, ``, `Export time: ${new Date().toLocaleString()}`, ``];
@@ -1029,20 +617,7 @@ export function Agent() {
     }
   }, []);
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (uploadMenuRef.current && !uploadMenuRef.current.contains(e.target as Node)) {
-        setShowUploadMenu(false);
-      }
-    };
-    if (showUploadMenu) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [showUploadMenu]);
-
   const groups = useMemo(() => groupMessages(messages), [messages]);
-  const goalProgress = useMemo(() => getGoalProgress(goalSnapshot), [goalSnapshot]);
 
   /* Merge message groups with live-channel items, ordered by timestamp, so a
    * mandate proposal / live-action chip renders inline at the point it arrived. */
@@ -1084,505 +659,68 @@ export function Agent() {
     <div className="flex flex-col flex-1 min-w-0 overflow-hidden h-full">
       <div ref={listRef} className="flex-1 overflow-auto p-6 scroll-smooth relative">
         <div className="max-w-3xl mx-auto space-y-4">
-          {sessionLoading && (
-            <div className="space-y-4 py-4">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="flex gap-3 animate-pulse">
-                  <div className="h-8 w-8 rounded-full bg-muted shrink-0" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-muted rounded w-3/4" />
-                    <div className="h-3 bg-muted/60 rounded w-1/2" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {sessionLoading && <SkeletonLoading />}
           {!sessionLoading && messages.length === 0 && <WelcomeScreen onExample={runPrompt} />}
-
-          {timelineRows.map((row, rowIdx) => {
-            if (row.render === "live") {
-              if (row.item.kind === "proposal") {
-                return (
-                  <MandateProposalCard
-                    key={row.key}
-                    proposal={row.item.proposal}
-                    committed={committedMandates[row.item.proposal.proposal_id] ?? null}
-                    onAdjust={runPrompt}
-                  />
-                );
-              }
-              return <LiveActionChip key={row.key} action={row.item.action} />;
-            }
-            const g = row.group;
-            if (g.kind === "timeline") {
-              const isLastRow = rowIdx === timelineRows.length - 1;
-              return (
-                <ThinkingTimeline
-                  key={row.key}
-                  messages={g.msgs}
-                  isLatest={isLastRow && status === "streaming"}
-                />
-              );
-            }
-            const msgIdx = messages.indexOf(g.msg);
-            if (g.msg.type === "swarm_status" && g.msg.swarmStatus) {
-              return (
-                <div key={row.key} data-msg-idx={msgIdx}>
-                  <SwarmStatusCard status={g.msg.swarmStatus} />
-                </div>
-              );
-            }
-            return (
-              <div key={row.key} data-msg-idx={msgIdx}>
-                <MessageBubble msg={g.msg} onRetry={g.msg.type === "error" ? handleRetry : undefined} />
-              </div>
-            );
-          })}
-
-          {/* Pre-stream placeholder: visible after Send, before first SSE event */}
-          {status === "streaming" && !streamingText && toolCalls.length === 0 && !messages.some((m) => m.type === "swarm_status" && m.swarmStatus?.status === "running") && (
-            <div className="flex gap-3">
-              <AgentAvatar />
-              <div className="flex-1 min-w-0 flex items-center gap-2 text-xs text-muted-foreground pt-1">
-                <Loader2 className="h-3 w-3 animate-spin text-primary shrink-0" />
-                <span>智能体正在思考…</span>
-              </div>
-            </div>
-          )}
-
-          {/* Live streaming area: text + tool status */}
-          {(streamingText || (status === "streaming" && toolCalls.length > 0)) && (
-            <div className="flex gap-3">
-              <AgentAvatar />
-              <div className="flex-1 min-w-0 space-y-1.5">
-                {streamingText && (
-                  <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed">
-                    {streamingText}
-                    <span className="inline-block w-0.5 h-4 bg-primary ml-0.5 animate-pulse align-middle" />
-                  </div>
-                )}
-                {status === "streaming" && toolCalls.length > 0 && (
-                  <ToolProgressIndicator toolCalls={toolCalls} />
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Persistent streaming pulse bar — always visible while agent is working */}
-          {status === "streaming" && (
-            <div className="flex items-center gap-2 px-1 pt-1">
-              <div className="h-0.5 flex-1 rounded-full bg-primary/20 overflow-hidden">
-                <div className="h-full w-1/3 bg-primary rounded-full animate-[pulse-slide_2s_ease-in-out_infinite]" />
-              </div>
-              <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums">running</span>
-            </div>
-          )}
-
+          <ChatMessageList
+            timelineRows={timelineRows}
+            messages={messages}
+            status={status}
+            streamingText={streamingText}
+            toolCalls={toolCalls}
+            onRetry={handleRetry}
+            onAdjust={runPrompt}
+            committedMandates={committedMandates}
+          />
         </div>
-
-        {/* Scroll to bottom button */}
-        {showScrollBtn && (
-          <button
-            onClick={forceScrollToBottom}
-            className="sticky bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-medium shadow-lg hover:opacity-90 transition-opacity z-10"
-          >
-            <ArrowDown className="h-3 w-3" /> 新消息
-          </button>
-        )}
+        {showScrollBtn && <ScrollToBottomButton onClick={forceScrollToBottom} />}
         <ConversationTimeline messages={messages} containerRef={listRef} />
       </div>
-
-      <form onSubmit={handleSubmit} className="border-t p-4 bg-background/80 backdrop-blur-sm">
-        <div className="max-w-3xl mx-auto space-y-2">
-          {/* Swarm preset badge */}
-          {swarmPreset && (
-            <div className="flex items-center gap-1">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400 text-xs font-medium">
-                <Users className="h-3 w-3" />
-                {swarmPreset.title}
-                <button type="button" onClick={() => setSwarmPreset(null)} className="hover:text-destructive transition-colors">
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            </div>
-          )}
-          {goalComposerActive && (
-            <div className="flex items-center gap-1">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-xs font-medium">
-                <Target className="h-3 w-3" />
-                新建研究目标
-                <button type="button" onClick={() => setGoalComposerActive(false)} className="hover:text-destructive transition-colors">
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            </div>
-          )}
-          {goalSnapshot && !goalComposerActive && (
-            <div className="grid gap-2">
-              <button
-                type="button"
-                onClick={() => setGoalDetailsOpen((open) => !open)}
-                className="inline-flex max-w-full items-center gap-1.5 justify-self-start rounded-lg bg-primary/10 px-2.5 py-1 text-left text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-                title={goalSnapshot.goal.objective}
-                aria-label="Active research goal"
-                aria-expanded={goalDetailsOpen}
-              >
-                <Target className="h-3 w-3 shrink-0" />
-                <span className="shrink-0">Goal</span>
-                <span className="truncate text-muted-foreground">
-                  {goalSnapshot.goal.ui_summary || goalSnapshot.goal.objective}
-                </span>
-                {goalProgress.metLabel && (
-                  <span className="shrink-0 font-mono text-[11px] text-emerald-600 dark:text-emerald-400">
-                    {goalProgress.metLabel}
-                  </span>
-                )}
-                {goalProgress.evidenceTotal > 0 && (
-                  <span className="shrink-0 rounded bg-background px-1 font-mono text-[10px] text-primary" title="为此研究目标收集的证据">
-                    {goalProgress.evidenceTotal} evidence
-                  </span>
-                )}
-                <ChevronDown
-                  className={[
-                    "h-3 w-3 shrink-0 transition-transform",
-                    goalDetailsOpen ? "rotate-180" : "",
-                  ].join(" ")}
-                  aria-hidden="true"
-                />
-              </button>
-              {goalDetailsOpen && (
-                <div className="grid gap-3 rounded-xl border border-primary/20 bg-background/95 p-3 text-xs shadow-sm">
-                  {goalEditActive ? (
-                    <div className="grid gap-2">
-                      <textarea
-                        value={goalEditValue}
-                        onChange={(event) => setGoalEditValue(event.target.value)}
-                        rows={3}
-                        className="w-full rounded-lg border bg-background px-3 py-2 text-xs leading-relaxed text-foreground outline-none focus:ring-2 focus:ring-primary/30"
-                      />
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setGoalEditActive(false)}
-                          className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-                        >
-                          <X className="h-3 w-3" />
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleSaveGoalEdit}
-                          disabled={!goalEditValue.trim()}
-                          className="inline-flex items-center gap-1 rounded-lg bg-primary px-2 py-1 text-[11px] font-medium text-primary-foreground transition-opacity disabled:opacity-40"
-                        >
-                          <Check className="h-3 w-3" />
-                          Save
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="rounded-lg border bg-muted/20 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
-                      {goalSnapshot.goal.objective}
-                    </div>
-                  )}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="rounded-lg border bg-muted/20 p-2.5">
-                      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        Criteria
-                      </div>
-                      <div className="mt-1 font-mono text-base font-semibold text-foreground">
-                        {goalProgress.label || "0/0"}
-                      </div>
-                    </div>
-                    <div className="rounded-lg border bg-muted/20 p-2.5">
-                      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        Evidence
-                      </div>
-                      <div className="mt-1 font-mono text-base font-semibold text-foreground">
-                        {goalProgress.evidenceTotal}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid gap-1.5">
-                    {goalSnapshot.criteria.map((criterion, index) => {
-                      const evidenceCount = criterionEvidenceCount(goalSnapshot, criterion.criterion_id);
-                      const displayStatus = criterionCovered(goalSnapshot, criterion) && !isCriterionStatusMet(criterion.status)
-                        ? "covered"
-                        : statusLabel(criterion.status);
-                      return (
-                        <div
-                          key={criterion.criterion_id}
-                          className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-start gap-2 rounded-lg border bg-muted/20 p-2"
-                        >
-                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[10px] text-muted-foreground">
-                            {criterionIndexLabel(index)}
-                          </span>
-                          <span className="min-w-0">
-                            <span className="block truncate font-medium text-foreground">{criterion.text}</span>
-                            <span className="block text-[11px] text-muted-foreground">
-                              {displayStatus}
-                            </span>
-                          </span>
-                          <span className="rounded-full border px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-                            {evidenceCount} ev
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {goalSnapshot.evidence.length > 0 && (
-                    <div className="grid gap-1.5 border-t pt-2">
-                      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        Recent Evidence
-                      </div>
-                      {latestGoalEvidence(goalSnapshot).map((item) => (
-                        <div key={item.evidence_id} className="rounded-lg bg-muted/20 px-2 py-1.5">
-                          <div className="mb-0.5 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
-                            <span className="truncate">{item.source_provider || "evidence"}</span>
-                            <span>{statusLabel(item.verification_status)}</span>
-                          </div>
-                          <div className="line-clamp-2 text-[11px] leading-relaxed text-foreground">
-                            {item.text}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex flex-wrap justify-end gap-2 border-t pt-2">
-                    <button
-                      type="button"
-                      onClick={handleContinueGoal}
-                      disabled={status === "streaming"}
-                      className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
-                    >
-                      <Play className="h-3 w-3" />
-                      Continue
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleStartGoalEdit}
-                      disabled={goalEditActive}
-                      className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
-                    >
-                      <Pencil className="h-3 w-3" />
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleCancelGoal}
-                      className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-destructive/40 hover:text-destructive"
-                    >
-                      <X className="h-3 w-3" />
-                      Cancel Goal
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          {/* Persistent live runtime status panel — sits alongside the goal/mandate
-              badges (SPEC §7.5 + audit C2). Self-hides when no broker is configured. */}
-          <RunnerStatus
-            status={liveStatus}
-            unavailable={liveStatusUnavailable}
-            halted={liveIsHalted}
-            onRefresh={refreshLiveStatus}
-          />
-          {/* Attachment badge */}
-          {attachment && (
-            <div className="flex items-center gap-1">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-xs font-medium">
-                <Paperclip className="h-3 w-3" />
-                {attachment.filename}
-                <button type="button" onClick={() => setAttachment(null)} className="hover:text-destructive transition-colors">
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            </div>
-          )}
-          {/* Uploading indicator */}
-          {uploading && (
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              上传中...
-            </div>
-          )}
-          {/* Persistent kill switch — distinct from the per-turn Stop button
-              above; disables all live order activity (SPEC Consent §4). */}
-          {liveActive && (
-            <div className="flex items-center gap-2">
-              {liveIsHalted ? (
-                <span className="inline-flex items-center gap-1.5 rounded-lg bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive">
-                  <OctagonX className="h-3 w-3" />
-                  连接器运行时已暂停
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleHaltLive}
-                  disabled={halting}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/40 bg-destructive/5 px-2.5 py-1 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-40"
-                  title="立即停止连接器运行时活动"
-                >
-                  {halting ? <Loader2 className="h-3 w-3 animate-spin" /> : <OctagonX className="h-3 w-3" />}
-                  暂停连接器运行时
-                </button>
-              )}
-            </div>
-          )}
-          <div className="flex gap-2 items-end">
-            {/* "+" menu: PDF upload + Swarm presets */}
-            <div className="relative" ref={uploadMenuRef}>
-              <button
-                type="button"
-                onClick={() => setShowUploadMenu(prev => !prev)}
-                disabled={status === "streaming" || uploading}
-                className="w-9 h-9 rounded-full border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40 shrink-0"
-                title="More options"
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-              {showUploadMenu && (
-                <div className="absolute bottom-full left-0 mb-2 w-52 rounded-xl border bg-background/95 backdrop-blur-sm shadow-lg py-1 z-50">
-                  <button
-                    type="button"
-                    onClick={() => { fileInputRef.current?.click(); setShowUploadMenu(false); }}
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors flex items-center gap-2"
-                  >
-                    <Paperclip className="h-4 w-4" />
-                    上传 PDF 文档
-                  </button>
-                  <div className="border-t my-1" />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowUploadMenu(false);
-                      setSwarmPreset(null);
-                      setGoalComposerActive(true);
-                      inputRef.current?.focus();
-                    }}
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors flex items-center gap-2"
-                  >
-                    <Target className="h-4 w-4" />
-                    Research Goal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowUploadMenu(false);
-                      setGoalComposerActive(false);
-                      setSwarmPreset({ name: "auto", title: "Agent Swarm" });
-                      inputRef.current?.focus();
-                    }}
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors flex items-center gap-2"
-                  >
-                    <Users className="h-4 w-4" />
-                    Agent Swarm
-                  </button>
-                  <div className="border-t my-1" />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowUploadMenu(false);
-                      void runPrompt(CONNECTOR_CHECK_PROMPT);
-                    }}
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors flex items-center gap-2"
-                  >
-                    <Landmark className="h-4 w-4" />
-                    检查交易连接器
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowUploadMenu(false);
-                      void runPrompt(CONNECTOR_PORTFOLIO_PROMPT);
-                    }}
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors flex items-center gap-2"
-                  >
-                    <Landmark className="h-4 w-4" />
-                    分析连接器组合
-                  </button>
-                </div>
-              )}
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.docx,.xlsx,.xls,.pptx,.csv,.tsv,.txt,.md,.log,.json,.yaml,.yml,.toml,.html,.xml,.rst,.png,.jpg,.jpeg,.gif,.bmp,.webp,.tiff"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            <textarea
-              ref={inputRef}
-              value={input}
-              rows={1}
-              onChange={(e) => setInput(e.target.value)}
-              onCompositionStart={() => {
-                isComposingRef.current = true;
-              }}
-              onCompositionEnd={() => {
-                isComposingRef.current = false;
-                lastCompositionEndRef.current = Date.now();
-              }}
-              onInput={(e) => {
-                const el = e.target as HTMLTextAreaElement;
-                el.style.height = "auto";
-                el.style.height = el.scrollHeight + "px";
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  const nativeEvent = e.nativeEvent as KeyboardEvent & { isComposing?: boolean };
-                  const justFinishedComposing = Date.now() - lastCompositionEndRef.current < 80;
-                  if (isComposingRef.current || nativeEvent.isComposing || nativeEvent.keyCode === 229) {
-                    return;
-                  }
-                  if (justFinishedComposing) {
-                    e.preventDefault();
-                    return;
-                  }
-                  e.preventDefault();
-                  runPrompt(input.trim());
-                }
-              }}
-              placeholder={
-                goalComposerActive
-                  ? "描述要关联到本会话的研究目标"
-                  : "例如：为 000001.SZ 创建双均线交叉策略，回测 2024 年"
-              }
-              className="flex-1 px-4 py-2.5 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow resize-none max-h-32 overflow-y-auto"
-              disabled={status === "streaming"}
-            />
-            {messages.length > 0 && (
-              <button
-                type="button"
-                onClick={handleExport}
-                className="px-3 py-2.5 rounded-xl border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                title="Export chat"
-              >
-                <Download className="h-4 w-4" />
-              </button>
-            )}
-            {status === "streaming" ? (
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="px-4 py-2.5 rounded-xl bg-destructive text-destructive-foreground text-sm font-medium hover:opacity-90 transition-opacity"
-                title="Stop generation"
-              >
-                <Square className="h-4 w-4" />
-              </button>
-            ) : (
-              <button
-                type="submit"
-                disabled={goalComposerActive ? !input.trim() : (!input.trim() && !attachment)}
-                className="px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
-              >
-                <Send className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        </div>
-      </form>
+      <InputArea
+        input={input}
+        setInput={setInput}
+        inputRef={inputRef}
+        isComposingRef={isComposingRef}
+        lastCompositionEndRef={lastCompositionEndRef}
+        fileInputRef={fileInputRef}
+        swarmPreset={swarmPreset}
+        setSwarmPreset={setSwarmPreset}
+        goalComposerActive={goalComposerActive}
+        setGoalComposerActive={setGoalComposerActive}
+        goalSnapshot={goalSnapshot}
+        goalDetailsOpen={goalDetailsOpen}
+        setGoalDetailsOpen={setGoalDetailsOpen}
+        goalEditActive={goalEditActive}
+        goalEditValue={goalEditValue}
+        setGoalEditValue={setGoalEditValue}
+        setGoalEditActive={setGoalEditActive}
+        status={status}
+        liveStatus={liveStatus}
+        liveStatusUnavailable={liveStatusUnavailable}
+        liveActive={liveActive}
+        liveIsHalted={liveIsHalted}
+        halting={halting}
+        uploading={uploading}
+        attachment={attachment}
+        setAttachment={setAttachment}
+        showUploadMenu={showUploadMenu}
+        setShowUploadMenu={setShowUploadMenu}
+        messages={messages}
+        onSubmit={handleSubmit}
+        onCancel={handleCancel}
+        onExport={handleExport}
+        onHaltLive={handleHaltLive}
+        onFileSelect={handleFileSelect}
+        onContinueGoal={handleContinueGoal}
+        onStartGoalEdit={handleStartGoalEdit}
+        onSaveGoalEdit={handleSaveGoalEdit}
+        onCancelGoal={handleCancelGoal}
+        onGoalComposerOpen={handleGoalComposerOpen}
+        onSwarmMode={handleSwarmMode}
+        onConnectorCheck={handleConnectorCheck}
+        onConnectorPortfolio={handleConnectorPortfolio}
+        onRefreshLiveStatus={refreshLiveStatus}
+        runPrompt={runPrompt}
+      />
     </div>
   );
 }

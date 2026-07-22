@@ -415,7 +415,7 @@ def reconstruct_price_series(run_dir: Path) -> List[Dict[str, Any]]:
 
     agent_root = Path(__file__).resolve().parents[1]
     try:
-        from src.providers.llm import _ensure_dotenv
+        from agent.src.providers.llm import _ensure_dotenv
 
         _ensure_dotenv()
     except Exception:

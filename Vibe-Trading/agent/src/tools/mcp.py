@@ -23,8 +23,8 @@ from fastmcp.exceptions import McpError, ToolError
 from key_value.aio.stores.filetree import FileTreeStore
 from mcp import types as mcp_types
 
-from src.agent.tools import BaseTool
-from src.config.schema import MCPServerConfig
+from agent.src.agent.tools import BaseTool
+from agent.src.config.schema import MCPServerConfig
 
 logger = logging.getLogger(__name__)
 

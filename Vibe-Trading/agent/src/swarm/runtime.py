@@ -20,9 +20,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
-from src.config.schema import AgentConfig
-from src.swarm import grounding
-from src.swarm.models import (
+from agent.src.config.schema import AgentConfig
+from agent.src.swarm import grounding
+from agent.src.swarm.models import (
     RunStatus,
     SwarmAgentSpec,
     SwarmEvent,
@@ -31,16 +31,16 @@ from src.swarm.models import (
     TaskStatus,
     WorkerResult,
 )
-from src.swarm.presets import build_run_from_preset
-from src.swarm.store import SwarmStore
-from src.swarm.task_store import (
+from agent.src.swarm.presets import build_run_from_preset
+from agent.src.swarm.store import SwarmStore
+from agent.src.swarm.task_store import (
     TaskStore,
     resolve_dependencies,
     topological_layers,
     validate_dag,
 )
-from src.tools.redaction import redact_internal_paths
-from src.swarm.worker import run_worker
+from agent.src.tools.redaction import redact_internal_paths
+from agent.src.swarm.worker import run_worker
 
 logger = logging.getLogger(__name__)
 
@@ -423,7 +423,7 @@ class SwarmRuntime:
         # in a heartbeat so events.jsonl gets fresh entries during the fetch
         # — without this, the stale-run reaper would false-positive-mark a
         # healthy fresh run that's just waiting on OHLCV API calls.
-        from src.agent.progress import HeartbeatTimer
+        from agent.src.agent.progress import HeartbeatTimer
 
         def _on_grounding_heartbeat(payload: dict) -> None:
             self._emit_event(

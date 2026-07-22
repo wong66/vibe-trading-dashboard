@@ -1,6 +1,6 @@
 """Durable research hypothesis registry."""
 
-from src.hypotheses.registry import (
+from agent.src.hypotheses.registry import (
     HYPOTHESIS_STATUSES,
     Hypothesis,
     HypothesisRegistry,

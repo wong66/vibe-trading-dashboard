@@ -21,20 +21,20 @@ import time as _time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from src.agent.context import ContextBuilder
-from src.agent.memory import WorkspaceMemory
-from src.agent.progress import HeartbeatTimer, ProgressEvent, _set_emitter
-from src.agent.tools import ToolRegistry
-from src.agent.trace import TraceWriter
-from src.core.state import RunStateStore
-from src.goal.context import (
+from agent.src.agent.context import ContextBuilder
+from agent.src.agent.memory import WorkspaceMemory
+from agent.src.agent.progress import HeartbeatTimer, ProgressEvent, _set_emitter
+from agent.src.agent.tools import ToolRegistry
+from agent.src.agent.trace import TraceWriter
+from agent.src.core.state import RunStateStore
+from agent.src.goal.context import (
     format_goal_continuation_prompt,
     get_current_goal_context,
     goal_needs_continuation,
     goal_progress_tuple,
 )
-from src.providers.chat import ChatLLM
-from src.tools.background_tools import get_background_manager
+from agent.src.providers.chat import ChatLLM
+from agent.src.tools.background_tools import get_background_manager
 
 RUNS_DIR = Path(__file__).resolve().parents[2] / "runs"
 TOKEN_THRESHOLD = int(os.getenv("TOKEN_THRESHOLD", "40000"))
@@ -483,7 +483,7 @@ class AgentLoop:
                     if token_delta or turn_delta:
                         try:
                             if goal_store is None:
-                                from src.goal import GoalStore
+                                from agent.src.goal import GoalStore
 
                                 goal_store = GoalStore()
                             goal_store.account_usage(
@@ -515,7 +515,7 @@ class AgentLoop:
                     if active_goal_id and session_id and GOAL_MAX_CONTINUATIONS > 0:
                         try:
                             if goal_store is None:
-                                from src.goal import GoalStore
+                                from agent.src.goal import GoalStore
 
                                 goal_store = GoalStore()
                             continuation_snapshot = goal_store.get_goal_snapshot(active_goal_id)

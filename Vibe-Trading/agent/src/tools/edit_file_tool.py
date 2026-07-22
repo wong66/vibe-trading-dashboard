@@ -5,10 +5,10 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from src.agent.tools import BaseTool
-from src.tools.path_utils import safe_path as _safe_path
-from src.tools.path_utils import safe_run_dir as _safe_run_dir
-from src.tools.redaction import redact_internal_paths
+from agent.src.agent.tools import BaseTool
+from agent.src.tools.path_utils import safe_path as _safe_path
+from agent.src.tools.path_utils import safe_run_dir as _safe_run_dir
+from agent.src.tools.redaction import redact_internal_paths
 
 
 class EditFileTool(BaseTool):

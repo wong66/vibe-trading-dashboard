@@ -27,8 +27,8 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-from src.live.paths import live_root
-from src.live.runtime.scheduler import Job
+from agent.src.live.paths import live_root
+from agent.src.live.runtime.scheduler import Job
 
 logger = logging.getLogger(__name__)
 

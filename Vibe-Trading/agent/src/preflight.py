@@ -29,7 +29,7 @@ class CheckResult:
 
 def _check_llm_provider() -> CheckResult:
     """Verify LLM provider connectivity."""
-    from src.providers.llm import _ensure_dotenv, _sync_provider_env
+    from agent.src.providers.llm import _ensure_dotenv, _sync_provider_env
 
     _ensure_dotenv()
     provider = os.getenv("LANGCHAIN_PROVIDER", "").strip()
@@ -57,7 +57,7 @@ def _check_llm_provider() -> CheckResult:
 
     if provider.lower() in {"openai-codex", "openai_codex"}:
         try:
-            from src.providers.openai_codex import get_openai_codex_login_status
+            from agent.src.providers.openai_codex import get_openai_codex_login_status
 
             token = get_openai_codex_login_status()
         except Exception as exc:

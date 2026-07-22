@@ -24,7 +24,7 @@ from __future__ import annotations
 import json
 import logging
 
-from src.live.mandate.model import (
+from agent.src.live.mandate.model import (
     AssetClass,
     ConsentMeta,
     HardCaps,
@@ -32,7 +32,7 @@ from src.live.mandate.model import (
     Mandate,
     UniverseConstraint,
 )
-from src.live.paths import broker_dir
+from agent.src.live.paths import broker_dir
 
 logger = logging.getLogger(__name__)
 

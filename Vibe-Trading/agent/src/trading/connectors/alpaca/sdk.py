@@ -19,7 +19,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any, Mapping
 
-from src.config.paths import get_runtime_root
+from agent.src.config.paths import get_runtime_root
 
 CONFIG_FILENAME = "alpaca.json"
 

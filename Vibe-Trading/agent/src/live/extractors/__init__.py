@@ -14,8 +14,8 @@ from __future__ import annotations
 
 from typing import Callable
 
-from src.live.enforcement import OrderIntent
-from src.trading.connectors.robinhood.extractor import (
+from agent.src.live.enforcement import OrderIntent
+from agent.src.trading.connectors.robinhood.extractor import (
     extract_order_intent as _robinhood_extract,
 )
 

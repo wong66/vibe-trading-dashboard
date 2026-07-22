@@ -33,6 +33,8 @@ from __future__ import annotations
 import json
 import logging
 import math
+
+logger = logging.getLogger(__name__)
 import os
 import re
 import sys
@@ -48,7 +50,7 @@ from fastmcp import Context, FastMCP
 
 mcp = FastMCP("Vibe-Trading")
 
-logger = logging.getLogger(__name__)
+from .common import env_flag_enabled
 
 
 # ---------------------------------------------------------------------------
@@ -63,7 +65,7 @@ _include_shell_tools = True
 
 def _env_shell_tools_enabled() -> bool:
     """Return whether shell tools were explicitly enabled for network MCP."""
-    return os.getenv("VIBE_TRADING_ENABLE_SHELL_TOOLS", "").strip().lower() in {"1", "true", "yes", "on"}
+    return env_flag_enabled("VIBE_TRADING_ENABLE_SHELL_TOOLS")
 
 
 def _get_skills_loader():

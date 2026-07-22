@@ -18,7 +18,7 @@ classification test parametrize list.
 
 from __future__ import annotations
 
-from src.live.classification import ToolClass
+from agent.src.live.classification import ToolClass
 
 #: Frozen canonical Robinhood read/write catalog.
 ROBINHOOD_TOOL_CLASS: dict[str, ToolClass] = {

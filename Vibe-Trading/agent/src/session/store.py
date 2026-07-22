@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from src.session.models import Attempt, Message, Session
+from agent.src.session.models import Attempt, Message, Session
 
 logger = logging.getLogger(__name__)
 
