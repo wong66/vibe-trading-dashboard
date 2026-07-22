@@ -10,7 +10,7 @@ compatibility_date = "2024-09-23"
 
 # Pages Functions 用到的环境变量（非机密，仅为隧道地址）
 [vars]
-# ↓↓↓ deploy-vt-cf.sh 会把这里替换成真实的隧道地址，形如 https://<uuid>.cfargotunnel.com
-BACKEND_URL = "https://REPLACE-ME.cfargotunnel.com"
+# ↓↓↓ 临时模式：每次 Mac 启动 cloudflared 临时隧道会变；如需固定 URL 改用 Named Tunnel
+BACKEND_URL = "https://relations-impacts-sides-dimensions.trycloudflare.com"
 # 可选：astock-peg 服务的隧道地址（不填则 /peg-api 返回 503）
 # BACKEND_PEG_URL = "https://REPLACE-ME-peg.cfargotunnel.com"
