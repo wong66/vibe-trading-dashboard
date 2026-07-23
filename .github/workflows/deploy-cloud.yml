@@ -1,0 +1,59 @@
+# 云端轻量版部署：Vibe-Trading 独立 Pages 项目（关机也能看行情）
+# 与现有隧道版 vibe-trading-dashboard 完全独立，互不影响：
+#   - VITE_API_BASE="" / VITE_DSA_BASE="" → 前端 API 全部同源，落到 Pages Functions
+#   - 行情类接口（/market-data、/stock-kline、/stock-search、/tencent-quote）走边缘腾讯/新浪 HTTP
+#   - 分析类接口诚实降级（需本地 Mac 后端在线）
+# 触发：手动 workflow_dispatch 或 push 到 main（可通过文件筛选避免误触发）
+
+name: Deploy Vibe-Trading Cloud (lightweight)
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "Vibe-Trading/frontend/**"
+      - "Vibe-Trading/functions/**"
+      - ".github/workflows/deploy-cloud.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-pages-cloud-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install frontend dependencies
+        working-directory: Vibe-Trading/frontend
+        run: npm install
+
+      - name: Build frontend (cloud mode: same-origin API)
+        working-directory: Vibe-Trading/frontend
+        run: npm run build
+        env:
+          # 云端轻量版：API 不走任何外部隧道，全部同源落到 Pages Functions
+          VITE_API_BASE: ""
+          VITE_DSA_BASE: ""
+
+      - name: Deploy to Cloudflare Pages (cloud project)
+        working-directory: Vibe-Trading
+        run: |
+          npx --yes wrangler@latest pages deploy frontend/dist \
+            --project-name vibe-trading-cloud \
+            --branch main \
+            --commit-dirty=true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
