@@ -4,6 +4,7 @@
 #   - 行情类接口（/market-data、/stock-kline、/stock-search、/tencent-quote）走边缘腾讯/新浪 HTTP
 #   - 分析类接口诚实降级（需本地 Mac 后端在线）
 # 触发：手动 workflow_dispatch 或 push 到 main（可通过文件筛选避免误触发）
+# (v2: 触发 GitHub 重新解析工作流定义)
 
 name: Deploy Vibe-Trading Cloud (lightweight)
 
