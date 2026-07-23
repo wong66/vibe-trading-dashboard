@@ -36,11 +36,13 @@ jobs:
         working-directory: Vibe-Trading/frontend
         run: npm run build
         env:
-          # 不再注入 VITE_API_BASE：前端走 Pages 同源，由 functions/[[path]].js
-          # 在边缘代理到 Cloudflare Tunnel（Mac 后端）。这样浏览器只发同源请求，
-          # 绕开浏览器侧 CORS preflight / 扩展 / 公司网拦 cfargotunnel.com 的问题。
-          #
-          # 每日选股分析（dsa-web，5173）仍走独立隧道，iframe 嵌入。
+          # 主后端走 Cloudflare Tunnel 固定地址：浏览器【直连】隧道，由 Cloudflare
+          # 公网 ingress 转发到 Mac 后端 8898。
+          # （不能走 Pages Functions 边缘代理：Worker 解析 cfargotunnel.com 得到
+          #   内部 ULA fd10::，会被边缘拒绝 "DNS points to local or disallowed
+          #   IPv6 address"；真实浏览器走 ingress 能正常路由，故必须浏览器直连。）
+          VITE_API_BASE: https://6a700475-2d33-4979-a6e0-897cb864f783.cfargotunnel.com
+          # 每日选股分析（dsa-web，5173）走独立隧道，iframe 嵌入。
           VITE_DSA_BASE: https://27ef24af-27d0-407f-a9ca-b2b8b0fd469d.cfargotunnel.com
 
       - name: Deploy to Cloudflare Pages

@@ -1,48 +1,18 @@
 /**
- * Cloudflare Pages Functions — 边缘代理
+ * Cloudflare Pages Functions
  *
- * 作用：把浏览器（同源 Pages 域名）发来的 API 请求，在 Cloudflare 边缘
- * 转发到用户 Mac 上的后端（经 Cloudflare Tunnel），前端代码无需任何改动、
- * 也无需处理跨域（CORS）。非 API 请求则正常返回静态资源 / SPA 首页。
+ * 架构（重要）：主后端 / 智能分析 / PEG 等 API 由【浏览器直连 Cloudflare Tunnel】
+ * 完成，前端在生产构建时已注入 VITE_API_BASE（= 主隧道固定地址）。
  *
- * 路由规则 100% 对齐 frontend/vite.config.ts 的 dev proxy：
- *   - 精确 API 路径 → 转发到 BACKEND_URL（Mac 后端 :8898，含 /smart-analysis）
- *   - /peg-api/*    → 转发到 BACKEND_PEG_URL（可选：astock-peg 服务 :3000）
- *   - /tencent-quote → 直接转发到腾讯行情 qt.gtimg.cn（尽力而为）
- *   - /correlation、/runs/<id>（无斜杠且 Accept:text/html）→ SPA 首页
- *   - 其余（含 /aquant/* 页面路由、静态资源）→ ASSETS，404 时回退 index.html
+ * 之所以不能在此处代理主后端：Cloudflare Tunnel 域名解析到内部 ULA（fd10::），
+ * 真实浏览器走 Cloudflare 公网 ingress 能正常路由；但 Pages Functions（Worker）
+ * 的 fetch 解析到 fd10:: 后会被边缘拒绝
+ * （"DNS points to local or disallowed IPv6 address"）。所以本 Functions【不】代理
+ * 主后端，仅负责以下两件事：
+ *   1) /tencent-quote → 直连腾讯行情 qt.gtimg.cn
+ *      （前端以相对路径调用，请求落在 Pages 同源，由这里转发）
+ *   2) 其余请求 → 静态资源 / SPA 首页回退（index.html 交给前端路由接管）
  */
-
-// 精确匹配的 API 前缀（原 vite.config PROXY_PATHS + 额外固定前缀）
-const EXACT_API = [
-  "/sessions", "/swarm/presets", "/swarm/runs",
-  "/settings/llm", "/settings/data-sources",
-  "/mandate", "/live", "/upload", "/shadow-reports",
-  "/market-data", "/industry-reports",
-  "/stock-search", "/stock-kline", "/stock-fundamentals",
-  "/stock-mcap-history", "/stock-quote", "/stock-consensus",
-  "/stock-reports", "/sector-data",
-  "/runs", "/correlation", "/alpha", "/smart-analysis",
-];
-
-// 返回 "api" | "spa" | "asset"
-function routeKind(path, wantsHtml) {
-  // html-fallback 路由：浏览器直接导航（Accept 含 text/html）时当作页面
-  if (path === "/correlation") return wantsHtml ? "spa" : "api";
-  if (/^\/runs\/[^/]+\/?$/.test(path)) return wantsHtml ? "spa" : "api";
-  if (EXACT_API.some((x) => path === x || path.startsWith(x + "/"))) return "api";
-  // /aquant 子路径（带斜杠）= API；裸页面路由 = SPA
-  if (/^\/aquant\/(signals|plans|review|delivery|market)\//.test(path)) return "api";
-  if (/^\/aquant\/(signals|plans|review|delivery|market)$/.test(path)) return "spa";
-  return "asset";
-}
-
-function json(status, msg) {
-  return new Response(JSON.stringify({ error: msg }), {
-    status,
-    headers: { "content-type": "application/json; charset=utf-8" },
-  });
-}
 
 async function serveStatic(context) {
   const { request, env } = context;
@@ -67,46 +37,21 @@ async function proxyPass(request, upstream) {
   if (method !== "GET" && method !== "HEAD") {
     init.body = await request.arrayBuffer().catch(() => null);
   }
-  // WebSocket 升级：交给运行时尽力隧道（Cloudflare 支持 fetch 透传 101）
-  if ((request.headers.get("upgrade") || "").toLowerCase() === "websocket") {
-    return fetch(upstream, { method: "GET", headers, redirect: "manual" });
-  }
   return fetch(upstream, init);
 }
 
 export async function onRequest(context) {
-  const { request, env } = context;
+  const { request } = context;
   const url = new URL(request.url);
   const path = url.pathname;
-  const wantsHtml = (request.headers.get("accept") || "").includes("text/html");
 
-  // 1) astock-peg 外围服务（可选）
-  if (path.startsWith("/peg-api")) {
-    if (!env.BACKEND_PEG_URL) {
-      return json(503, "PEG 估值服务未配置：请在本机启动 astock-peg 并配置 BACKEND_PEG_URL");
-    }
-    const upstream =
-      env.BACKEND_PEG_URL.replace(/\/$/, "") +
-      path.replace(/^\/peg-api/, "/api") +
-      url.search;
-    return proxyPass(request, upstream);
-  }
-
-  // 2) 腾讯行情直连（尽力而为）
+  // 腾讯行情直连（前端以相对路径 /tencent-quote 调用，落在 Pages 同源）
   if (path.startsWith("/tencent-quote")) {
     const upstream =
       "https://qt.gtimg.cn" + path.replace(/^\/tencent-quote/, "") + url.search;
     return proxyPass(request, upstream);
   }
 
-  // 3) 主后端 / 智能分析：浏览器 → Pages 同源 → 边缘函数 fetch tunnel → Mac 后端
-  //    （不再让浏览器直连 tunnel，避免浏览器侧 CORS/扩展/公司网拦截）
-  const BACKEND_TUNNEL = env.BACKEND_TUNNEL_URL || "https://6a700475-2d33-4979-a6e0-897cb864f783.cfargotunnel.com";
-  const kind = routeKind(path, wantsHtml);
-  if (kind === "api") {
-    const upstream = BACKEND_TUNNEL.replace(/\/$/, "") + path + url.search;
-    return proxyPass(request, upstream);
-  }
-  if (kind === "spa") return serveStatic(context);
+  // 其余一律走静态资源 / SPA 回退
   return serveStatic(context);
 }
