@@ -138,12 +138,13 @@ export function StockBoard() {
   const activeItem = watchlist.find(w => w.code === activeCode) ?? null;
 
   return (
-    <div className="flex h-full w-full overflow-hidden relative">
-      {/* Left watchlist — 可收起 */}
-      <aside className={cn(
-        "border-r bg-card/30 flex flex-col shrink-0 transition-all duration-300 ease-in-out relative",
-        sidebarCollapsed ? "w-0 overflow-hidden border-r-0" : "w-56",
+    <div className="flex h-full w-full relative">
+      {/* Left watchlist — 可收起（外层做宽度动画，内部 overflow-hidden 裁切） */}
+      <div className={cn(
+        "shrink-0 overflow-hidden transition-all duration-300 ease-in-out",
+        sidebarCollapsed ? "w-0" : "w-56",
       )}>
+      <aside className="w-56 border-r bg-card/30 flex flex-col h-full">
         <div className="p-4 border-b flex items-center justify-between">
           <div>
             <h2 className="text-base font-semibold tracking-tight">个股看板</h2>
@@ -218,13 +219,14 @@ export function StockBoard() {
           )}
         </div>
       </aside>
+      </div>
 
-      {/* 折叠/展开按钮 — 固定在左侧边缘 */}
+      {/* 折叠/展开按钮 — 在最外层，跨在侧栏右边缘上 */}
       <button
         onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
         className={cn(
-          "absolute top-1/2 -translate-y-1/2 z-20 w-5 h-10 rounded-r-md border border-l-0 bg-background shadow-sm flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground",
-          sidebarCollapsed ? "left-0" : "-left-5",
+          "absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-30 w-5 h-10 rounded-md border bg-background shadow-sm flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground",
+          sidebarCollapsed ? "left-0" : "left-56",
         )}
         title={sidebarCollapsed ? "展开自选列表" : "收起自选列表"}
       >
