@@ -79,6 +79,20 @@ jobs:
         working-directory: Vibe-Trading/frontend
         run: npm run build
 
+      - name: Ensure Cloudflare Pages project exists
+        working-directory: Vibe-Trading
+        run: |
+          echo "Ensuring Pages project vibe-trading-cloud exists..."
+          curl -s -X POST \
+            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data '{"name":"vibe-trading-cloud","production_branch":"main"}' \
+            -w "\nHTTP %{http_code}\n" || true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
       - name: Deploy to Cloudflare Pages (cloud project)
         working-directory: Vibe-Trading
         run: |
