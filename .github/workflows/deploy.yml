@@ -36,11 +36,11 @@ jobs:
         working-directory: Vibe-Trading/frontend
         run: npm run build
         env:
-          # 生产环境前端直连 Cloudflare Tunnel（Mac 后端 127.0.0.1:8898 的暴露地址）。
-          # 隧道为 Named Tunnel，地址固定不变；凭据在用户 Mac 的 ~/.cloudflared/，不会进仓库。
-          # 前端据此把 /aquant、/smart-analysis 等请求直接发到隧道，绕过 Cloudflare 边缘函数自环限制。
-          VITE_API_BASE: https://6a700475-2d33-4979-a6e0-897cb864f783.cfargotunnel.com
-          # 每日选股分析（dsa-web，5173）独立隧道，iframe 直连，绕过路径代理导致的绝对资源 404。
+          # 不再注入 VITE_API_BASE：前端走 Pages 同源，由 functions/[[path]].js
+          # 在边缘代理到 Cloudflare Tunnel（Mac 后端）。这样浏览器只发同源请求，
+          # 绕开浏览器侧 CORS preflight / 扩展 / 公司网拦 cfargotunnel.com 的问题。
+          #
+          # 每日选股分析（dsa-web，5173）仍走独立隧道，iframe 嵌入。
           VITE_DSA_BASE: https://27ef24af-27d0-407f-a9ca-b2b8b0fd469d.cfargotunnel.com
 
       - name: Deploy to Cloudflare Pages
