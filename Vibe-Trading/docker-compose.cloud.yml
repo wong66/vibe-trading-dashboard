@@ -1,0 +1,28 @@
+# Vibe-Trading 云端自包含部署
+# 用法（在 Vibe-Trading/ 目录内）：
+#   docker compose -f docker-compose.cloud.yml up -d --build
+# 之后访问 http://<云服务器公网IP>:8899/stock-board
+#
+# 注意：本 compose 使用 Dockerfile.cloud，构建上下文为 Vibe-Trading/ 目录。
+#       忽略规则由同目录的 .dockerignore 自动生效。
+
+services:
+  vibe:
+    build:
+      context: .
+      dockerfile: Dockerfile.cloud
+    image: vibe-trading-cloud:latest
+    container_name: vibe-trading-cloud
+    restart: unless-stopped
+    ports:
+      - "8899:8899"
+    environment:
+      - TZ=Asia/Shanghai
+      # 可选：若使用智能分析等需要 LLM 的功能，取消下一行注释并填入密钥
+      # - OPENAI_API_KEY=sk-xxxx
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8899/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
