@@ -75,7 +75,7 @@ jobs:
         working-directory: Vibe-Trading/frontend
         run: npm install
 
-      - name: Build frontend (cloud mode: same-origin API)
+      - name: "Build frontend (cloud mode: same-origin API)"
         working-directory: Vibe-Trading/frontend
         run: npm run build
 
