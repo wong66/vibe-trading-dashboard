@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: cloud-deploy
+  group: cloud-deploy-prod
   cancel-in-progress: true
 
 jobs:
