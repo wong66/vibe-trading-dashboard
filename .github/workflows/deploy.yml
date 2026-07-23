@@ -55,3 +55,37 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  # 云端轻量版：独立 Pages 项目 vibe-trading-cloud（关机也能看 A股行情）。
+  # VITE_API_BASE 留空 → 前端 API 同源落到 Pages Functions（行情走边缘腾讯/新浪，分析诚实降级）。
+  # continue-on-error：即使云端部署失败也绝不影响上面的隧道版（现有线上站点）。
+  deploy-cloud:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install frontend dependencies
+        working-directory: Vibe-Trading/frontend
+        run: npm install
+
+      - name: Build frontend (cloud mode: same-origin API)
+        working-directory: Vibe-Trading/frontend
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages (cloud project)
+        working-directory: Vibe-Trading
+        run: |
+          npx --yes wrangler@latest pages deploy frontend/dist \
+            --project-name vibe-trading-cloud \
+            --branch main \
+            --commit-dirty=true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
