@@ -107,6 +107,11 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',  // 允许公网访问
     port: 5173,       // 默认端口
+    // 允许通过 Cloudflare 快速隧道域名（*.trycloudflare.com）访问。
+    // Vite 5+ 默认基于 DNS rebinding 防护只允许 localhost/127.0.0.1，
+    // 公网域名直接被拒 → 报 "Blocked request. This host ... is not allowed"。
+    // 设 true = 允许所有 host（快速隧道每次 URL 都变，必须放开）。
+    allowedHosts: true,
     headers: {
       'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
       'Pragma': 'no-cache',
