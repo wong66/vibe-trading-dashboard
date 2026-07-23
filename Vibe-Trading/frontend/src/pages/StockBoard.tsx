@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   TrendingUp, TrendingDown, RefreshCw, Plus, X, Search, BarChart3,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { Skeleton } from "@/components/common/Skeleton";
 import { cn } from "@/lib/utils";
@@ -93,6 +94,7 @@ export function StockBoard() {
     const list = loadWatchlist();
     return list.length > 0 ? list[0].code : null;
   });
+  const [bottomCollapsed, setBottomCollapsed] = useState(false);
 
   const codesA = watchlist.filter(w => w.market === "A").map(w => w.code);
   const codesUS = watchlist.filter(w => w.market === "US").map(w => w.code);
@@ -138,7 +140,9 @@ export function StockBoard() {
   const activeItem = watchlist.find(w => w.code === activeCode) ?? null;
 
   return (
-    <div className="flex h-full w-full overflow-hidden">
+    <div className="flex flex-col h-full w-full overflow-hidden">
+      {/* 上部：左侧自选 + 右侧详情 */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
       {/* Left watchlist */}
       <aside className="w-56 border-r bg-card/30 flex flex-col shrink-0">
         <div className="p-4 border-b flex items-center justify-between">
@@ -249,6 +253,81 @@ export function StockBoard() {
           </div>
         )}
       </main>
+      </div>
+
+      {/* 底部可收起面板 */}
+      <div className={cn(
+        "border-t bg-card/30 flex flex-col transition-all duration-300 ease-in-out relative",
+        bottomCollapsed ? "h-10" : "h-64",
+      )}>
+        {/* 折叠/展开按钮 */}
+        <button
+          onClick={() => setBottomCollapsed(!bottomCollapsed)}
+          className="absolute -top-3 left-1/2 -translate-x-1/2 z-20 w-8 h-5 rounded-full border bg-background shadow-sm flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground"
+          title={bottomCollapsed ? "展开底部面板" : "收起底部面板"}
+        >
+          {bottomCollapsed
+            ? <ChevronLeft className="h-3 w-3 rotate-90" />
+            : <ChevronRight className="h-3 w-3 -rotate-90" />
+          }
+        </button>
+
+        {!bottomCollapsed && (
+          <div className="flex-1 overflow-y-auto p-4 pt-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">市场概览</h3>
+              <span className="text-[10px] text-muted-foreground/50">实时数据</span>
+            </div>
+            <div className="grid grid-cols-4 gap-3">
+              {/* 涨跌统计卡片 */}
+              {(() => {
+                const values = Object.values(quotes).filter(q => q && !q.error);
+                const up = values.filter(q => (q.change_pct ?? 0) > 0).length;
+                const down = values.filter(q => (q.change_pct ?? 0) < 0).length;
+                const flat = values.length - up - down;
+                return [
+                  { label: "上涨", value: up, color: "text-red-500", bg: "bg-red-50 dark:bg-red-900/20" },
+                  { label: "下跌", value: down, color: "text-green-600", bg: "bg-green-50 dark:bg-green-900/20" },
+                  { label: "平盘", value: flat, color: "text-muted-foreground", bg: "bg-muted/50" },
+                  { label: "自选总数", value: watchlist.length, color: "text-foreground", bg: "bg-card border" },
+                ].map(card => (
+                  <div key={card.label} className={cn("rounded-lg p-3 flex flex-col gap-1", card.bg)}>
+                    <span className="text-[10px] text-muted-foreground">{card.label}</span>
+                    <span className={cn("text-lg font-bold tabular-nums", card.color)}>{card.value}</span>
+                  </div>
+                ));
+              })()}
+            </div>
+            {/* 自选涨跌幅排行 */}
+            {Object.values(quotes).filter(q => q && !q.error).length > 0 && (
+              <div className="mt-3">
+                <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider mb-2">涨跌幅排行</p>
+                <div className="flex gap-2 flex-wrap">
+                  {[...Object.values(quotes)]
+                    .filter(q => q && !q.error)
+                    .sort((a, b) => Math.abs(b.change_pct ?? 0) - Math.abs(a.change_pct ?? 0))
+                    .slice(0, 8)
+                    .map(q => (
+                      <div key={q!.code} className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-background border text-[11px]">
+                        <span className="font-medium truncate max-w-[52px]" title={q!.name}>{q!.name}</span>
+                        <span className={cn("font-mono font-semibold tabular-nums", changeColor(q!.change_pct))}>
+                          {q!.change_pct > 0 ? "+" : ""}{q!.change_pct.toFixed(2)}%
+                        </span>
+                      </div>
+                    ))
+                  }
+                </div>
+              </div>
+            )}
+            {/* 空态 */}
+            {watchlist.length === 0 && (
+              <div className="flex items-center justify-center h-full text-muted-foreground/40 text-xs">
+                添加自选股后此处显示市场概览
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       <SearchDialog open={showSearch} onClose={() => setShowSearch(false)} onAdd={handleAdd} existingCodes={existingCodes} />
     </div>
