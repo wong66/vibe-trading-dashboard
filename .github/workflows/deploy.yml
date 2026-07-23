@@ -41,9 +41,9 @@ jobs:
           # （不能走 Pages Functions 边缘代理：Worker 解析 cfargotunnel.com 得到
           #   内部 ULA fd10::，会被边缘拒绝 "DNS points to local or disallowed
           #   IPv6 address"；真实浏览器走 ingress 能正常路由，故必须浏览器直连。）
-          VITE_API_BASE: https://inside-marilyn-monsters-transport.trycloudflare.com
+          VITE_API_BASE: https://falling-ratings-passage-assuming.trycloudflare.com
           # 每日选股分析（dsa-web，5173）走独立快速隧道，iframe 嵌入。
-          VITE_DSA_BASE: https://differential-represents-solar-mary.trycloudflare.com
+          VITE_DSA_BASE: https://attending-harper-patterns-ranging.trycloudflare.com
 
       - name: Deploy to Cloudflare Pages
         working-directory: Vibe-Trading
