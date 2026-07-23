@@ -99,11 +99,13 @@ export async function onRequest(context) {
     return proxyPass(request, upstream);
   }
 
-  // 3) 主后端 / 智能分析：前端已改为直连隧道（见 VITE_API_BASE），
-  //    此处不再经边缘函数转发，避免 fetch 自带隧道域名(cfargotunnel.com)触发自环。
+  // 3) 主后端 / 智能分析：浏览器 → Pages 同源 → 边缘函数 fetch tunnel → Mac 后端
+  //    （不再让浏览器直连 tunnel，避免浏览器侧 CORS/扩展/公司网拦截）
+  const BACKEND_TUNNEL = env.BACKEND_TUNNEL_URL || "https://6a700475-2d33-4979-a6e0-897cb864f783.cfargotunnel.com";
   const kind = routeKind(path, wantsHtml);
   if (kind === "api") {
-    return serveStatic(context);
+    const upstream = BACKEND_TUNNEL.replace(/\/$/, "") + path + url.search;
+    return proxyPass(request, upstream);
   }
   if (kind === "spa") return serveStatic(context);
   return serveStatic(context);
